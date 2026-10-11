@@ -8,4 +8,5 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.1.0]
 
-- First release.
+- First release: `detect`, `normalize` and `counts` for line endings in text, with CRLF
+  treated as a single unit.
