@@ -58,6 +58,14 @@ def test_a_byte_order_mark_picks_the_codec_and_is_kept(
     assert report.counts["crlf"] == 2
 
 
+def test_a_utf8_mark_keeps_the_ascii_set_byte_exact(tmp_path: Path) -> None:
+    # Not valid UTF-8 after the mark, but the ASCII set never needs to decode it.
+    path = _file(tmp_path, codecs.BOM_UTF8 + b"caf\xe9\r\n")
+    report = normalize_file(path)
+    assert path.read_bytes() == codecs.BOM_UTF8 + b"caf\xe9\n"
+    assert (report.encoding, report.bom, report.changed) == ("utf-8", True, True)
+
+
 def test_utf16_without_a_mark_looks_binary_and_is_left_alone(tmp_path: Path) -> None:
     data = "a\r\nb\r\n".encode("utf-16-le")
     path = _file(tmp_path, data)
@@ -86,11 +94,34 @@ def test_generic_utf16_with_a_mark_is_accepted(tmp_path: Path) -> None:
     assert path.read_bytes() == codecs.BOM_UTF16_BE + "a\n".encode("utf-16-be")
 
 
-def test_an_encoding_that_contradicts_the_mark_is_rejected(tmp_path: Path) -> None:
-    path = _file(tmp_path, codecs.BOM_UTF8 + b"a\r\n")
-    with pytest.raises(ValueError, match="byte order mark"):
-        normalize_file(path, encoding="latin-1")
-    assert path.read_bytes() == codecs.BOM_UTF8 + b"a\r\n"
+def test_a_non_utf_encoding_ignores_mark_lookalikes(tmp_path: Path) -> None:
+    # Two bytes FF FE at the start of a cp1252 file are text, not a UTF-16 mark.
+    path = _file(tmp_path, b"\xff\xfeab\r\n")
+    report = normalize_file(path, encoding="cp1252")
+    assert path.read_bytes() == b"\xff\xfeab\n"
+    assert (report.encoding, report.bom) == ("cp1252", False)
+
+
+def test_a_named_utf16_codec_is_not_mistaken_for_utf32(tmp_path: Path) -> None:
+    data = codecs.BOM_UTF16_LE + "\x00a\r\n".encode("utf-16-le")
+    path = _file(tmp_path, data)
+    report = normalize_file(path, encoding="utf-16")
+    assert path.read_bytes() == codecs.BOM_UTF16_LE + "\x00a\n".encode("utf-16-le")
+    assert (report.encoding, report.bom) == ("utf-16-le", True)
+
+
+def test_an_explicit_ascii_compatible_encoding_still_skips_binary(tmp_path: Path) -> None:
+    data = b"\x89PNG\r\n\x1a\n\x00\x00\r\n"
+    path = _file(tmp_path, data)
+    report = normalize_file(path, encoding="latin-1")
+    assert (report.binary, report.changed) == (True, False)
+    assert path.read_bytes() == data
+
+
+def test_reports_are_hashable(tmp_path: Path) -> None:
+    report = scan_file(_file(tmp_path, b"a\n"))
+    assert hash(report) == hash(scan_file(tmp_path / "f.txt"))
+    assert report == scan_file(tmp_path / "f.txt")
 
 
 def test_utf8_sig_without_a_mark_does_not_add_one(tmp_path: Path) -> None:
@@ -104,7 +135,7 @@ def test_unknown_encoding_is_a_value_error(tmp_path: Path) -> None:
     path = _file(tmp_path, b"a\n")
     with pytest.raises(ValueError, match="unknown encoding"):
         scan_file(path, encoding="no-such-codec")
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match="encoding must be"):
         scan_file(path, encoding=8)  # type: ignore[arg-type]
 
 

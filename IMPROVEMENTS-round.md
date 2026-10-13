@@ -12,7 +12,7 @@ Progress:
 - [ ] Mutation run (guards removed one at a time, each must fail the suite)
 - [x] Docs: README, CHANGELOG, docstrings, packaging metadata
 - [ ] Gates: ruff format, ruff check, mypy --strict, pytest
-- [ ] Independent review findings fixed with regression tests
+- [x] Independent review findings fixed with regression tests
 - [ ] Pull request opened, guard clean
 
 ## Starting point

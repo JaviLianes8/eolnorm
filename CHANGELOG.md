@@ -21,9 +21,10 @@ All notable changes to this project are documented here. The format follows
 - `scan_file` and `normalize_file` with `FileReport`: byte order marks (UTF-8, UTF-16,
   UTF-32) are detected and kept, an explicit `encoding` covers other codecs, binary files
   are skipped, and the rewrite is atomic (temporary file, fsync, mode kept, one rename,
-  symlinks followed). `dry_run=True` only reports.
+  symlinks followed, read-only files refused). `dry_run=True` only reports.
 - The `eolnorm` command (also `python -m eolnorm`) with `--to`, `--check`, `--keep-lone-cr`,
-  `--breaks`, `--encoding` and `-` for standard input.
+  `--breaks`, `--encoding` and `-` for standard input, which follows the same byte order
+  mark and binary rules as files.
 
 ### Changed
 

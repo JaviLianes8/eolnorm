@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import codecs
 import io
 import sys
 from pathlib import Path
@@ -110,9 +111,50 @@ def test_dash_with_bad_input_exits_two(monkeypatch: pytest.MonkeyPatch) -> None:
     assert main(["--to", "lf", "--breaks", "unicode", "-"]) == 2
 
 
+def test_dash_keeps_a_utf16_mark_and_codec(monkeypatch: pytest.MonkeyPatch) -> None:
+    data = codecs.BOM_UTF16_BE + "a\r\nb\r\n".encode("utf-16-be")
+    out = _pipe(monkeypatch, data)
+    assert main(["--to", "lf", "-"]) == 0
+    assert out.getvalue() == codecs.BOM_UTF16_BE + "a\nb\n".encode("utf-16-be")
+
+
+def test_dash_never_adds_a_mark(monkeypatch: pytest.MonkeyPatch) -> None:
+    out = _pipe(monkeypatch, b"a\r\n")
+    assert main(["--to", "lf", "--encoding", "utf-8-sig", "-"]) == 0
+    assert out.getvalue() == b"a\n"
+
+
+def test_dash_refuses_generic_utf16_without_a_mark(monkeypatch: pytest.MonkeyPatch) -> None:
+    out = _pipe(monkeypatch, "a\r\n".encode("utf-16-le"))
+    assert main(["--to", "lf", "--encoding", "utf-16", "-"]) == 2
+    assert out.getvalue() == b""
+
+
+def test_dash_passes_binary_through(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = b"\x89PNG\r\n\x1a\n\x00\r\n"
+    out = _pipe(monkeypatch, data)
+    assert main(["--to", "crlf", "-"]) == 0
+    assert out.getvalue() == data
+
+
+def test_a_name_the_console_cannot_encode_is_still_a_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = _file(tmp_path, "snow" + chr(0x2603) + ".txt", b"a\r\n")
+    out = io.BytesIO()
+    console = io.TextIOWrapper(out, encoding="ascii", newline="\n", write_through=True)
+    monkeypatch.setattr(sys, "stdout", console)
+    assert main(["--to", "lf", path]) == 0
+    assert Path(path).read_bytes() == b"a\n"
+    assert out.getvalue().decode("ascii").endswith("snow\\u2603.txt\n")
+
+
 @pytest.mark.parametrize(
     "argv",
     [
+        ["--keep-lone-cr", "x"],
         ["--check", "x"],
         ["-"],
         ["--to", "lf", "--check", "-"],

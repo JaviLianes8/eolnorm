@@ -32,6 +32,9 @@ class Normalizer:
         """Return the normalized output that is safe to emit after this chunk."""
         if not isinstance(chunk, (str, bytes)):
             raise TypeError(f"expected str or bytes, got {type(chunk).__name__}")
+        if isinstance(chunk, bytes) and self._breaks != "ascii":
+            # Checked before any state changes, so a rejected chunk leaves the stream usable.
+            raise ValueError(f"breaks={self._breaks!r} needs decoded text, not bytes")
         if self._kind is None:
             self._kind = str if isinstance(chunk, str) else bytes
             self._pending = chunk[:0]

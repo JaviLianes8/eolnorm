@@ -120,9 +120,9 @@ def test_bytes_refuse_the_unicode_sets() -> None:
 
 def test_other_types_are_rejected() -> None:
     for bad in (bytearray(b"a\n"), memoryview(b"a\n"), 5, None, ["a\n"]):
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match="expected str or bytes"):
             counts(bad)  # type: ignore[arg-type]
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match="expected str or bytes"):
             normalize(bad)  # type: ignore[type-var]
 
 

@@ -9,7 +9,7 @@ import codecs
 _NONPRINTABLE = bytes(b for b in range(0x20) if b not in b"\b\t\n\r\x1b\x0c") + b"\x7f"
 
 # Longest first: the UTF-32 LE mark starts with the UTF-16 LE one.
-_BOMS: tuple[tuple[bytes, str], ...] = (
+BOMS: tuple[tuple[bytes, str], ...] = (
     (codecs.BOM_UTF32_LE, "utf-32-le"),
     (codecs.BOM_UTF32_BE, "utf-32-be"),
     (codecs.BOM_UTF8, "utf-8"),
@@ -39,7 +39,7 @@ def is_binary(data: bytes) -> bool:
 
 def sniff_bom(data: bytes) -> tuple[bytes, str] | None:
     """Return the byte order mark at the start of ``data`` and its codec, if any."""
-    for bom, codec in _BOMS:
+    for bom, codec in BOMS:
         if data.startswith(bom):
             return bom, codec
     return None

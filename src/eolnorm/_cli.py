@@ -6,7 +6,7 @@ import argparse
 import sys
 from collections.abc import Sequence
 
-from ._eol import normalize
+from ._content import decode, fix
 from ._files import FileReport, normalize_file, scan_file
 
 
@@ -27,7 +27,9 @@ def _parser() -> argparse.ArgumentParser:
         "--keep-lone-cr", action="store_true", help="leave a CR not followed by LF alone"
     )
     parser.add_argument("--breaks", choices=["ascii", "unicode", "splitlines"], default="ascii")
-    parser.add_argument("--encoding", help="decode files with this codec")
+    parser.add_argument(
+        "--encoding", help="decode with this codec (binary files are still skipped)"
+    )
     parser.add_argument("--version", action="version", version=f"eolnorm {__version__}")
     return parser
 
@@ -40,17 +42,20 @@ def _describe(report: FileReport) -> str:
 
 
 def _filter(args: argparse.Namespace) -> None:
-    data = sys.stdin.buffer.read()
-    if args.encoding is None and args.breaks == "ascii":
-        result = normalize(data, args.to, keep_lone_cr=args.keep_lone_cr)
-    else:
-        codec = args.encoding or "utf-8"
-        text = normalize(
-            data.decode(codec), args.to, breaks=args.breaks, keep_lone_cr=args.keep_lone_cr
-        )
-        result = text.encode(codec)
-    sys.stdout.buffer.write(result)
+    # The same rules as for files: a byte order mark picks and keeps the codec, binary
+    # input passes through untouched.
+    content = decode(sys.stdin.buffer.read(), args.breaks, args.encoding)
+    if content.body is None:
+        print("eolnorm: -: binary, passed through unchanged", file=sys.stderr)
+    sys.stdout.buffer.write(fix(content, args.to, args.breaks, args.keep_lone_cr))
     sys.stdout.flush()
+
+
+def _readable(stream: object) -> None:
+    # A path the console cannot encode must not turn a finished fix into a reported failure.
+    reconfigure = getattr(stream, "reconfigure", None)
+    if reconfigure is not None:
+        reconfigure(errors="backslashreplace")
 
 
 def _one(path: str, args: argparse.Namespace) -> bool:
@@ -76,14 +81,17 @@ def _one(path: str, args: argparse.Namespace) -> bool:
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the tool. Exit 0 on success, 1 when --check finds work, 2 on bad input."""
     args = _parser().parse_args(argv)
-    if args.check and args.to is None:
-        _parser().error("--check needs --to")
+    for flag, used in (("--check", args.check), ("--keep-lone-cr", args.keep_lone_cr)):
+        if used and args.to is None:
+            _parser().error(f"{flag} needs --to")
+    _readable(sys.stdout)
+    _readable(sys.stderr)
     if "-" in args.paths:
         if args.to is None or args.check or len(args.paths) > 1:
             _parser().error("- filters standard input and needs --to, alone, without --check")
         try:
             _filter(args)
-        except (UnicodeError, LookupError) as error:
+        except ValueError as error:
             print(f"eolnorm: -: {error}", file=sys.stderr)
             return 2
         return 0

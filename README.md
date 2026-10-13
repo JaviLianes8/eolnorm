@@ -1,8 +1,8 @@
 # eolnorm
 
-Detect, normalize and count line endings in text, bytes, streams and files. It matches what
-git does byte for byte, knows the Unicode line boundaries, rewrites files atomically, and
-has no dependencies.
+Detect, normalize and count line endings in text, bytes, streams and files. It can match
+git's `text` conversion byte for byte, knows the Unicode line boundaries, rewrites files
+atomically, and has no dependencies.
 
 ## Install
 
@@ -74,7 +74,9 @@ print(counts("a\x1eb", breaks="splitlines")["rs"])
 | `"splitlines"` | adds `fs`, `gs`, `rs` (U+001C to U+001E) | `str.splitlines` |
 
 `counts` always returns every kind of the chosen set, in that order. The two Unicode sets
-need decoded text: passing `bytes` with them raises `ValueError`.
+need decoded text: passing `bytes` with them raises `ValueError`. Note that they convert form
+feeds and vertical tabs too, so page breaks in `^L`-paginated sources become newlines; keep
+the default set for such files.
 
 ### Streams
 
@@ -122,16 +124,20 @@ print(is_binary(b"\x89PNG\r\n\x1a\n\x00"))
 - A UTF-8, UTF-16 or UTF-32 byte order mark selects the codec, and the same mark is written
   back. Without a mark the bytes are handled undecoded (ASCII set) or as UTF-8 (Unicode
   sets). `encoding=` names a codec instead, for example `"utf-16-le"` for a file without a
-  mark; generic `"utf-16"` and `"utf-32"` are refused there because the byte order is
-  unknown, and an encoding that contradicts the mark raises `ValueError`.
+  mark. A named UTF codec still honours its own marks; generic `"utf-16"` and `"utf-32"`
+  without a mark are refused because the byte order is unknown. Any other codec (say
+  `"cp1252"`) decodes every byte as text, even bytes that look like a mark.
 - Binary files are reported and never changed. `is_binary` uses git's text=auto
   statistics: a NUL byte, or fewer than 128 printable bytes per control byte, means binary.
   Git also treats a lone CR as binary; `is_binary` does not, so old Mac files can be fixed.
-  An explicit `encoding` skips the check.
+  The check also runs with an explicit ASCII-compatible `encoding`; it is skipped only for
+  codecs such as UTF-16, whose text is full of NUL bytes.
 - The rewrite is atomic: the new bytes go to a temporary file in the same folder, are
   flushed to disk, get the original's permission bits, and replace the original in one
   rename. A symlink is followed and stays a symlink. A file whose bytes would not change
-  is not touched, and `dry_run=True` only reports.
+  is not touched, and `dry_run=True` only reports. A read-only file is refused with
+  `PermissionError` on every system. Being a new file, the result does not keep hard links,
+  the owner and group, or Windows attributes and access lists of the original.
 
 ### Command line
 
@@ -148,7 +154,8 @@ $ eolnorm --to crlf - < in.txt > out.txt
 
 Options: `--to {lf,crlf,cr}`, `--check` (with `--to`: write nothing, exit 1 if a file would
 change, handy in a pre-commit hook), `--keep-lone-cr`, `--breaks {ascii,unicode,splitlines}`
-and `--encoding`. `-` filters standard input to standard output. Exit code 2 means bad
+and `--encoding`. `-` filters standard input to standard output with the same rules as for
+files (a byte order mark is kept, binary input passes through unchanged). Exit code 2 means bad
 usage or a file that could not be read or decoded; the other files are still processed.
 `python -m eolnorm` works too.
 

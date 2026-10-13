@@ -94,6 +94,14 @@ def test_bad_arguments_are_rejected() -> None:
         Normalizer(breaks="unicode").feed(b"a")
 
 
+def test_a_rejected_chunk_leaves_the_stream_usable() -> None:
+    stream = Normalizer(breaks="unicode")
+    with pytest.raises(ValueError):
+        stream.feed(b"a\r")
+    assert stream.feed("x\x85", final=True) == "x\n"
+    assert stream.counts["nel"] == 1
+
+
 def test_counts_property_is_a_copy() -> None:
     stream = Normalizer()
     stream.counts["lf"] = 99

@@ -40,35 +40,45 @@ def test_a_failed_replace_keeps_the_original_and_leaves_no_temporary(
     assert sorted(p.name for p in tmp_path.iterdir()) == ["f.txt"]
 
 
-def test_the_new_bytes_are_flushed_before_the_rename(
+def test_the_new_bytes_are_synced_to_disk_before_the_rename(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     path = _file(tmp_path, b"a\r\n")
-    seen: list[bytes] = []
-    real_replace = os.replace
+    events: list[tuple[str, bytes]] = []
+    real_fsync, real_replace = os.fsync, os.replace
 
-    def spy(source: str, target: str) -> None:
-        seen.append(Path(source).read_bytes())
+    def fsync(fd: int) -> None:
+        # Only the temporary file's descriptor is open for writing with the new bytes.
+        temporaries = [p for p in tmp_path.iterdir() if p.name.startswith(".eolnorm-")]
+        if temporaries:
+            events.append(("fsync", temporaries[0].read_bytes()))
+        real_fsync(fd)
+
+    def replace(source: str, target: str) -> None:
         assert Path(source).parent == path.parent
+        events.append(("replace", Path(source).read_bytes()))
         real_replace(source, target)
 
-    monkeypatch.setattr(os, "replace", spy)
+    monkeypatch.setattr(os, "fsync", fsync)
+    monkeypatch.setattr(os, "replace", replace)
     normalize_file(path)
-    assert seen == [b"a\n"]
+    assert events[:2] == [("fsync", b"a\n"), ("replace", b"a\n")]
     assert path.read_bytes() == b"a\n"
 
 
-def test_fsync_is_called_on_the_new_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[int] = []
-    real_fsync = os.fsync
-
-    def spy(fd: int) -> None:
-        calls.append(fd)
-        real_fsync(fd)
-
-    monkeypatch.setattr(os, "fsync", spy)
-    normalize_file(_file(tmp_path, b"a\r\n"))
-    assert calls
+def test_a_read_only_file_is_refused_on_every_system(tmp_path: Path) -> None:
+    path = _file(tmp_path, b"a\r\n")
+    path.chmod(stat.S_IREAD)
+    try:
+        if os.access(path, os.W_OK):
+            pytest.skip("running with rights that ignore permission bits")
+        with pytest.raises(PermissionError, match="read-only"):
+            normalize_file(path)
+        assert path.read_bytes() == b"a\r\n"
+        assert sorted(p.name for p in tmp_path.iterdir()) == ["f.txt"]
+        assert normalize_file(path, dry_run=True).changed
+    finally:
+        path.chmod(stat.S_IREAD | stat.S_IWRITE)
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
