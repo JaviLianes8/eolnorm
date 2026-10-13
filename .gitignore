@@ -10,3 +10,7 @@ dist/
 .ruff_cache/
 .coverage
 htmlcov/
+
+# Third-party data, fetched by scripts/fetch_vectors.py (see its MANIFEST.txt)
+tests/vectors/unicode/*
+!tests/vectors/unicode/MANIFEST.txt

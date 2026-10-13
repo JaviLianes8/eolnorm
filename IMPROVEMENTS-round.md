@@ -2,7 +2,7 @@
 
 Progress:
 - [x] Brainstorm ranked improvements (this file)
-- [ ] Boundary sets: ASCII (default), UAX #14 mandatory breaks, `str.splitlines`
+- [x] Boundary sets: ASCII (default), UAX #14 mandatory breaks, `str.splitlines`
 - [ ] `bytes` input, `keep_lone_cr` (git `text` semantics), honest type errors
 - [ ] Streaming `Normalizer` (CRLF split across chunks, running counts)
 - [ ] `is_binary` (git text=auto heuristic), BOM sniffing, UTF-16 and UTF-32
