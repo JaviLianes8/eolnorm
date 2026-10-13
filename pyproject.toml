@@ -5,23 +5,36 @@ build-backend = "hatchling.build"
 [project]
 name = "eolnorm"
 version = "0.2.0"
-description = "Detect, normalize and count line endings in text"
+description = "Detect, normalize and count line endings in text, bytes, streams and files: git-exact, Unicode-aware, atomic rewrites, zero dependencies"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Javier Lianes", email = "javier@lianes8studio.com" }]
-keywords = []
+keywords = ["line-endings", "eol", "crlf", "newline", "normalize", "gitattributes", "unicode"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Text Processing",
+    "Topic :: Utilities",
     "Typing :: Typed",
 ]
 dependencies = []
 
 [project.optional-dependencies]
 dev = ["ruff", "mypy", "pytest", "build", "twine"]
+
+[project.scripts]
+eolnorm = "eolnorm._cli:main"
 
 [project.urls]
 Homepage = "https://lianes8studio.com"
@@ -33,6 +46,9 @@ Funding = "https://buymeacoffee.com/jlianesglrs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/eolnorm"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["IMPROVEMENTS-round.md", "tests/vectors/unicode/*.txt", "!tests/vectors/unicode/MANIFEST.txt"]
 
 [tool.ruff]
 line-length = 100

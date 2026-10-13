@@ -69,7 +69,7 @@ def test_mixing_str_and_bytes_is_rejected() -> None:
     stream = Normalizer()
     stream.feed("a\r")
     with pytest.raises(TypeError, match="mix"):
-        stream.feed(b"\n")  # type: ignore[arg-type]
+        stream.feed(b"\n")
 
 
 def test_a_str_subclass_does_not_lock_out_plain_str() -> None:

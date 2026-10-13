@@ -10,7 +10,7 @@ Progress:
 - [x] Command line tool (`eolnorm`, `python -m eolnorm`)
 - [ ] Contracts: live git ground truth, UCD data, interpreter scan, typing, README, wheel e2e
 - [ ] Mutation run (guards removed one at a time, each must fail the suite)
-- [ ] Docs: README, CHANGELOG, docstrings, packaging metadata
+- [x] Docs: README, CHANGELOG, docstrings, packaging metadata
 - [ ] Gates: ruff format, ruff check, mypy --strict, pytest
 - [ ] Independent review findings fixed with regression tests
 - [ ] Pull request opened, guard clean

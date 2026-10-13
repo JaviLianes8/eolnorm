@@ -148,6 +148,6 @@ def test_keep_lone_cr_must_be_a_bool() -> None:
 def test_normalize_is_idempotent_and_reversible_on_clean_text() -> None:
     text = "one\r\ntwo\rthree\nfour"
     for style in ("lf", "crlf", "cr"):
-        once = normalize(text, style)  # type: ignore[arg-type]
-        assert normalize(once, style) == once  # type: ignore[arg-type]
+        once = normalize(text, style)
+        assert normalize(once, style) == once
         assert normalize(once, "lf") == "one\ntwo\nthree\nfour"
