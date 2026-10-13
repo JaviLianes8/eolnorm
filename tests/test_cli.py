@@ -137,6 +137,7 @@ def test_dash_passes_binary_through(
     out = _pipe(monkeypatch, data)
     assert main(["--to", "crlf", "-"]) == 0
     assert out.getvalue() == data
+    assert capsys.readouterr().err == "eolnorm: -: binary, passed through unchanged\n"
 
 
 def test_a_name_the_console_cannot_encode_is_still_a_success(
