@@ -3,11 +3,11 @@
 Progress:
 - [x] Brainstorm ranked improvements (this file)
 - [x] Boundary sets: ASCII (default), UAX #14 mandatory breaks, `str.splitlines`
-- [ ] `bytes` input, `keep_lone_cr` (git `text` semantics), honest type errors
-- [ ] Streaming `Normalizer` (CRLF split across chunks, running counts)
-- [ ] `is_binary` (git text=auto heuristic), BOM sniffing, UTF-16 and UTF-32
-- [ ] File helpers: `scan_file`, `normalize_file` with an atomic in-place rewrite
-- [ ] Command line tool (`eolnorm`, `python -m eolnorm`)
+- [x] `bytes` input, `keep_lone_cr` (git `text` semantics), honest type errors
+- [x] Streaming `Normalizer` (CRLF split across chunks, running counts)
+- [x] `is_binary` (git text=auto heuristic), BOM sniffing, UTF-16 and UTF-32
+- [x] File helpers: `scan_file`, `normalize_file` with an atomic in-place rewrite
+- [x] Command line tool (`eolnorm`, `python -m eolnorm`)
 - [ ] Contracts: live git ground truth, UCD data, interpreter scan, typing, README, wheel e2e
 - [ ] Mutation run (guards removed one at a time, each must fail the suite)
 - [ ] Docs: README, CHANGELOG, docstrings, packaging metadata
