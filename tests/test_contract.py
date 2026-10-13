@@ -4,7 +4,20 @@ import eolnorm
 
 # The public API. Add every exported name here as the library grows; this list is the
 # contract and the test below fails if the module and this list disagree.
-PUBLIC_API: list[str] = ["Detected", "Style", "counts", "detect", "normalize"]
+PUBLIC_API: list[str] = [
+    "Breaks",
+    "Detected",
+    "FileReport",
+    "Kind",
+    "Normalizer",
+    "Style",
+    "counts",
+    "detect",
+    "is_binary",
+    "normalize",
+    "normalize_file",
+    "scan_file",
+]
 
 
 def test_all_lists_exactly_the_public_api() -> None:
