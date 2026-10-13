@@ -8,10 +8,10 @@ Progress:
 - [x] `is_binary` (git text=auto heuristic), BOM sniffing, UTF-16 and UTF-32
 - [x] File helpers: `scan_file`, `normalize_file` with an atomic in-place rewrite
 - [x] Command line tool (`eolnorm`, `python -m eolnorm`)
-- [ ] Contracts: live git ground truth, UCD data, interpreter scan, typing, README, wheel e2e
-- [ ] Mutation run (guards removed one at a time, each must fail the suite)
+- [x] Contracts: live git ground truth, UCD data, interpreter scan, typing, README, wheel e2e
+- [x] Mutation run (guards removed one at a time, each must fail the suite)
 - [x] Docs: README, CHANGELOG, docstrings, packaging metadata
-- [ ] Gates: ruff format, ruff check, mypy --strict, pytest
+- [x] Gates: ruff format, ruff check, mypy --strict, pytest
 - [x] Independent review findings fixed with regression tests
 - [ ] Pull request opened, guard clean
 
@@ -91,3 +91,29 @@ Left out on purpose: final-newline and trailing-whitespace fixes (other tools ow
 recursive directory walker with ignore rules (shell globs and `git ls-files` do this better),
 emulating `core.autocrlf` index lookups (git's "already committed with CRLF" rule needs the
 index), and EBCDIC codecs (an explicit `encoding` already covers them).
+
+## Verification
+
+- Gates: `ruff format --check .`, `ruff check .`, `mypy --strict src` (also `src tests`) and
+  `pytest` exit 0 on Windows with Python 3.13 (158 passed, 2 skipped: the POSIX mode test and
+  the wheel e2e). On the second machine with Python 3.14 and `EOLNORM_E2E=1` the full suite
+  passes (159 passed, 1 skipped): it builds the wheel, installs it in a fresh venv, drives the
+  API from an empty folder, and runs the installed `eolnorm` script and `python -m eolnorm`.
+- Live git 2.54: 310 samples through `text eol=lf` checkin, 310 through `eol=crlf` checkout and
+  over 440 through `text=auto` (including the 1 in 128 boundary and the final Ctrl-Z rule)
+  match `normalize` and `is_binary` byte for byte.
+- Boundary sets: every code point checked against the running interpreter's
+  `str.splitlines`, and against classes BK, CR, LF and NL in the fetched LineBreak.txt.
+- Mutations: 74 guards removed or altered one at a time across every module (boundary sets,
+  CRLF pairing, argument checks, lone CR handling, chunk holding and counting, every binary
+  statistic, byte order marks and codec rules, the binary check with explicit encodings,
+  the atomic writer's realpath, fsync, copymode, cleanup, folder and read-only rules, and the
+  command's exit codes, flags and stdin rules). All are killed except one equivalent mutant
+  (adding DEL to a list that only filters bytes below 0x20). The bytecode cache was disabled
+  and purged before each run, and the baseline was green before and after.
+- Independent review: 13 findings, all fixed with regression tests (stdin now follows the file
+  rules for marks, codecs and binary data; an explicit ASCII-compatible encoding still skips
+  binary files; a named codec only honours its own marks; read-only files are refused on
+  every system; folder sync errors after the rename are ignored; a rejected stream chunk
+  leaves the stream usable; reports are hashable; unencodable paths no longer turn a fix into
+  exit 2; `--keep-lone-cr` needs `--to`; README wording and atomic-write tests tightened).
