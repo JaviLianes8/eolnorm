@@ -133,7 +133,7 @@ def test_utf8_sig_without_a_mark_does_not_add_one(tmp_path: Path) -> None:
 
 def test_unknown_encoding_is_a_value_error(tmp_path: Path) -> None:
     path = _file(tmp_path, b"a\n")
-    with pytest.raises(ValueError, match="unknown encoding"):
+    with pytest.raises(ValueError, match="unknown text encoding"):
         scan_file(path, encoding="no-such-codec")
     with pytest.raises(TypeError, match="encoding must be"):
         scan_file(path, encoding=8)  # type: ignore[arg-type]

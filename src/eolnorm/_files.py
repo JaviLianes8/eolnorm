@@ -2,26 +2,34 @@
 
 from __future__ import annotations
 
+import errno
 import os
+import shutil
+import stat
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Union
 
 from ._atomic import write_atomic
-from ._content import Content, decode, fix
-from ._eol import counts, detected_from
-from ._kinds import Breaks, Detected, Style, check_breaks, check_style, kinds
-
-StrPath = Union[str, "os.PathLike[str]"]
+from ._checks import flag, plain, type_name
+from ._content import Content, check_encoding, decode, fix
+from ._eol import detected_from
+from ._kinds import Breaks, Detected, Style, check_breaks, check_style, kinds, tally
 
 
 @dataclass(frozen=True)
 class FileReport:
-    """What a file holds and whether normalizing it changed it (or would, in a dry run).
+    r"""What a file holds and whether normalizing it changed it (or would, in a dry run).
 
-    ``encoding`` names the codec in play: the one a byte order mark or the caller chose, or
+    ``path`` is the path as given, ``binary`` tells a file that was left alone, ``bom``
+    whether it starts with a byte order mark, and ``counts`` and ``detected`` describe the
+    file before any change, as `counts` and `detect` do. ``encoding`` names the codec in
+    play, as ``codecs.lookup`` spells it: the one a byte order mark or the caller chose, or
     utf-8 for the Unicode sets. It is None when no codec was involved, which is exact for
-    any ASCII-compatible encoding. For a binary file nothing is counted or changed.
+    any ASCII-compatible encoding, and for a binary file, where nothing is counted.
+
+    >>> report = FileReport("a.txt", False, None, False, {"lf": 2, "crlf": 0, "cr": 0}, "lf")
+    >>> report  # doctest: +NORMALIZE_WHITESPACE
+    FileReport(path='a.txt', binary=False, encoding=None, bom=False,
+               counts={'lf': 2, 'crlf': 0, 'cr': 0}, detected='lf', changed=False)
     """
 
     path: str
@@ -33,35 +41,64 @@ class FileReport:
     changed: bool = False
 
 
-def _load(path: StrPath, breaks: Breaks, encoding: str | None) -> Content:
-    return decode(Path(path).read_bytes(), breaks, encoding)
+def _path(path: object) -> str:
+    try:
+        name = plain(os.fspath(path))  # type: ignore[call-overload]
+    except TypeError:
+        name = None
+    if not isinstance(name, str):
+        raise TypeError(f"path must be a str or os.PathLike[str], got {type_name(path)}")
+    return name
 
 
-def _report(path: StrPath, content: Content, breaks: Breaks, changed: bool) -> FileReport:
-    tally: dict[str, int] = dict.fromkeys(kinds(breaks), 0)
+def _read(name: str) -> bytes:
+    # Only regular files: reading a pipe could block forever, and replacing one (or a
+    # device) with a regular file would change what the path is.
+    mode = os.stat(name).st_mode
+    if stat.S_ISDIR(mode):
+        raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), name)
+    if not stat.S_ISREG(mode):
+        raise shutil.SpecialFileError(errno.ENOTSUP, "not a regular file", name)
+    with open(name, "rb") as handle:
+        return handle.read()
+
+
+def _report(name: str, content: Content, breaks: Breaks, changed: bool) -> FileReport:
+    counted: dict[str, int] = dict.fromkeys(kinds(breaks), 0)
     if content.body is not None:
-        tally = counts(content.body, breaks=breaks)
+        counted = tally(content.body, breaks)
     return FileReport(
-        path=os.fspath(path),
+        path=name,
         binary=content.body is None,
         encoding=content.codec,
         bom=bool(content.prefix),
-        counts=tally,
-        detected=detected_from(tally),
+        counts=counted,
+        detected=detected_from(counted),
         changed=changed,
     )
 
 
 def scan_file(
-    path: StrPath, *, breaks: Breaks = "ascii", encoding: str | None = None
+    path: str | os.PathLike[str], *, breaks: Breaks = "ascii", encoding: str | None = None
 ) -> FileReport:
-    """Read a file and report its line endings without writing anything."""
-    breaks = check_breaks(breaks)
-    return _report(path, _load(path, breaks, encoding), breaks, changed=False)
+    r"""Read a file and report its line endings without writing anything.
+
+    >>> import pathlib, tempfile
+    >>> with tempfile.TemporaryDirectory() as folder:
+    ...     path = pathlib.Path(folder, "notes.txt")
+    ...     _ = path.write_bytes(b"one\r\ntwo\r\n")
+    ...     report = scan_file(path)
+    >>> report.detected, report.counts, report.changed
+    ('crlf', {'lf': 0, 'crlf': 2, 'cr': 0}, False)
+    """
+    name = _path(path)
+    chosen = check_breaks(breaks)
+    wanted = check_encoding(encoding)
+    return _report(name, decode(_read(name), chosen, wanted), chosen, changed=False)
 
 
 def normalize_file(
-    path: StrPath,
+    path: str | os.PathLike[str],
     to: Style = "lf",
     *,
     breaks: Breaks = "ascii",
@@ -69,19 +106,32 @@ def normalize_file(
     encoding: str | None = None,
     dry_run: bool = False,
 ) -> FileReport:
-    """Normalize a file in place, atomically, keeping its byte order mark and encoding.
+    r"""Normalize a file in place, atomically, keeping its byte order mark and encoding.
 
     A binary file is left alone. A file whose bytes would not change is not rewritten.
     With ``dry_run`` the report says whether it would change and nothing is written. The
     counts describe the file as it was before.
+
+    >>> import codecs, pathlib, tempfile
+    >>> with tempfile.TemporaryDirectory() as folder:
+    ...     path = pathlib.Path(folder, "notes.txt")
+    ...     _ = path.write_bytes(codecs.BOM_UTF16_LE + "a\r\nb\r\n".encode("utf-16-le"))
+    ...     report = normalize_file(path, "lf")
+    ...     after = path.read_bytes()
+    >>> report.encoding, report.bom, report.detected, report.changed
+    ('utf-16-le', True, 'crlf', True)
+    >>> after == codecs.BOM_UTF16_LE + "a\nb\n".encode("utf-16-le")
+    True
     """
-    breaks = check_breaks(breaks)
-    to = check_style(to)
-    if not isinstance(keep_lone_cr, bool):
-        raise TypeError("keep_lone_cr must be a bool")
-    content = _load(path, breaks, encoding)
-    output = fix(content, to, breaks, keep_lone_cr)
+    name = _path(path)
+    chosen = check_breaks(breaks)
+    target = check_style(to)
+    keep = flag("keep_lone_cr", keep_lone_cr)
+    wanted = check_encoding(encoding)
+    rehearse = flag("dry_run", dry_run)
+    content = decode(_read(name), chosen, wanted)
+    output = fix(content, target, chosen, keep)
     changed = output != content.raw
-    if changed and not dry_run:
-        write_atomic(os.fspath(path), output)
-    return _report(path, content, breaks, changed=changed)
+    if changed and not rehearse:
+        write_atomic(name, output)
+    return _report(name, content, chosen, changed=changed)

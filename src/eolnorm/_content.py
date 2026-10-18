@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import codecs
 from dataclasses import dataclass
+from typing import cast
 
-from ._binary import BOMS, is_binary, sniff_bom
-from ._eol import normalize
-from ._kinds import Breaks, Style
+from ._binary import BOMS, looks_binary, sniff_bom
+from ._checks import plain, shown, type_name
+from ._eol import convert
+from ._kinds import Breaks, Style, sequence
 
 # Codec names (as codecs.lookup spells them) that agree with each byte order mark.
 _AGREES = {
@@ -28,13 +30,22 @@ class Content:
     codec: str | None
 
 
-def _codec(encoding: object) -> str:
-    if not isinstance(encoding, str):
-        raise TypeError(f"encoding must be a str or None, got {type(encoding).__name__}")
+def check_encoding(encoding: object) -> str | None:
+    """The codec's canonical name, or None; only text encodings are accepted."""
+    if encoding is None:
+        return None
+    exact = plain(encoding)
+    if not isinstance(exact, str):
+        raise TypeError(f"encoding must be a str or None, got {type_name(encoding)}")
     try:
-        return codecs.lookup(encoding).name
-    except LookupError:
-        raise ValueError(f"unknown encoding: {encoding!r}") from None
+        name = codecs.lookup(exact).name
+        # Bytes-to-bytes and text-to-text codecs (hex, zlib, rot13) refuse both calls.
+        "".encode(name)
+        b"".decode(name)
+    except (LookupError, ValueError):
+        # ValueError: a name with a NUL or a lone surrogate cannot even be looked up.
+        raise ValueError(f"unknown text encoding: {shown(exact)}") from None
+    return name
 
 
 def _mark(raw: bytes, wanted: str | None) -> tuple[bytes, str] | None:
@@ -55,36 +66,54 @@ def _ascii_compatible(codec: str) -> bool:
         return False
 
 
-def decode(raw: bytes, breaks: Breaks, encoding: str | None) -> Content:
-    """Split ``raw`` into a kept prefix (a byte order mark) and a body to normalize."""
-    wanted = None if encoding is None else _codec(encoding)
+def _text(raw: bytes, start: int, codec: str) -> str:
+    try:
+        return raw[start:].decode(codec)
+    except UnicodeDecodeError as error:
+        # Positions count from the start of the file, byte order mark included.
+        begin, end = error.start + start, error.end + start
+        raise UnicodeDecodeError(error.encoding, raw, begin, end, error.reason) from None
+
+
+def decode(raw: bytes, breaks: Breaks, wanted: str | None) -> Content:
+    """Split ``raw`` into a kept prefix (a byte order mark) and a body to normalize.
+
+    ``wanted`` is a name from `check_encoding`. The body stays undecoded bytes only when no
+    codec was named, the set is the ASCII one and no UTF-16 or UTF-32 mark is present.
+    """
     found = _mark(raw, wanted)
     if found is not None:
         bom, codec = found
-        if codec == "utf-8" and breaks == "ascii":
-            return Content(raw, bom, raw[len(bom) :], codec)
-        return Content(raw, bom, raw[len(bom) :].decode(codec), codec)
-    if wanted in ("utf-16", "utf-32"):
+    elif wanted in ("utf-16", "utf-32"):
         raise ValueError(f"no byte order mark: name the byte order, {wanted}-le or {wanted}-be")
-    if wanted is not None:
+    else:
         # Without a mark utf-8-sig decodes like utf-8, but encoding with it would add one.
-        codec = "utf-8" if wanted == "utf-8-sig" else wanted
-        if _ascii_compatible(codec) and is_binary(raw):
-            return Content(raw, b"", None, None)
-        return Content(raw, b"", raw.decode(codec), codec)
-    if is_binary(raw):
+        bom, codec = b"", "utf-8" if wanted in (None, "utf-8-sig") else wanted
+    # git's statistics hold for ASCII-compatible bytes only: UTF-16 text is full of NULs.
+    if _ascii_compatible(codec) and looks_binary(raw):
         return Content(raw, b"", None, None)
-    if breaks == "ascii":
-        return Content(raw, b"", raw, None)
-    return Content(raw, b"", raw.decode("utf-8"), "utf-8")
+    if wanted is None and breaks == "ascii" and codec == "utf-8":
+        return Content(raw, bom, raw[len(bom) :], "utf-8" if bom else None)
+    return Content(raw, bom, _text(raw, len(bom), codec), codec)
 
 
 def fix(content: Content, to: Style, breaks: Breaks, keep_lone_cr: bool) -> bytes:
-    """The normalized bytes, with the same prefix and codec; binary comes back unchanged."""
-    body = content.body
+    """The normalized bytes, with the same prefix and codec; binary comes back unchanged.
+
+    A codec that does not give back the original bytes from the decoded text (UTF-7, some
+    CJK codecs with duplicate mappings) would change more than line endings: refused.
+    """
+    body, target = content.body, sequence(to)
     if body is None:
         return content.raw
     if isinstance(body, bytes):
-        return content.prefix + normalize(body, to, keep_lone_cr=keep_lone_cr)
-    fixed = normalize(body, to, breaks=breaks, keep_lone_cr=keep_lone_cr)
-    return content.prefix + fixed.encode(str(content.codec))
+        return content.prefix + cast(bytes, convert(body, target, "ascii", keep_lone_cr))
+    codec = cast(str, content.codec)
+    try:
+        same = content.prefix + body.encode(codec) == content.raw
+    except UnicodeEncodeError:
+        same = False
+    if not same:
+        raise ValueError(f"the {shown(codec)} codec does not give back these bytes unchanged")
+    fixed = cast(str, convert(body, target, breaks, keep_lone_cr))
+    return content.prefix + fixed.encode(codec)

@@ -1,0 +1,66 @@
+{
+  "LineBreak.txt": {
+    "url": "https://www.unicode.org/Public/18.0.0/ucd/LineBreak.txt",
+    "revision": "Unicode 18.0.0",
+    "size": 266206,
+    "sha256": "ae8cf1970c73f3f1a12d77852df96c4b2b1723ca8b388e36bb5739250c6849de",
+    "licence": "Unicode License v3 (https://www.unicode.org/terms_of_use.html)",
+    "fetched": "2026-10-18"
+  },
+  "tr14-57.html": {
+    "url": "https://www.unicode.org/reports/tr14/tr14-57.html",
+    "revision": "UAX #14 revision 57 (Unicode 18.0.0)",
+    "size": 226166,
+    "sha256": "296df5332aefe695b4951b511288b118bc6a7b43db7fadfd60f6062096acc7c0",
+    "licence": "Unicode copyright and terms of use (https://www.unicode.org/copyright.html)",
+    "fetched": "2026-10-18"
+  },
+  "stdtypes.rst": {
+    "url": "https://raw.githubusercontent.com/python/cpython/v3.14.0/Doc/library/stdtypes.rst",
+    "revision": "CPython v3.14.0",
+    "size": 237003,
+    "sha256": "98bf9fe448aed657067f78387e1248da6e503761e260ab38d737e14cccb2d1fe",
+    "licence": "PSF-2.0",
+    "fetched": "2026-10-18"
+  },
+  "glossary.rst": {
+    "url": "https://raw.githubusercontent.com/python/cpython/v3.14.0/Doc/glossary.rst",
+    "revision": "CPython v3.14.0",
+    "size": 69023,
+    "sha256": "47e09085b724a3b3eeb41dc53834c2bae9e4f1276459b8ee5319ec42ce90b96c",
+    "licence": "PSF-2.0",
+    "fetched": "2026-10-18"
+  },
+  "functions.rst": {
+    "url": "https://raw.githubusercontent.com/python/cpython/v3.14.0/Doc/library/functions.rst",
+    "revision": "CPython v3.14.0",
+    "size": 96299,
+    "sha256": "5839d9afe80810af0950df1b4be0ae10b26e53d5b70b138cb7ee9cfcf982c757",
+    "licence": "PSF-2.0",
+    "fetched": "2026-10-18"
+  },
+  "io.rst": {
+    "url": "https://raw.githubusercontent.com/python/cpython/v3.14.0/Doc/library/io.rst",
+    "revision": "CPython v3.14.0",
+    "size": 48896,
+    "sha256": "d6a742b5ede8faadb4f6cd3cfdd7ccf8874037a812ea44363884701e00689154",
+    "licence": "PSF-2.0",
+    "fetched": "2026-10-18"
+  },
+  "convert.c": {
+    "url": "https://raw.githubusercontent.com/git/git/v2.54.0/convert.c",
+    "revision": "git v2.54.0",
+    "size": 51053,
+    "sha256": "0b450b1db6e19d000cdcc4ab431906b540535791523fa9d40dd9284fd1c5771e",
+    "licence": "GPL-2.0-only",
+    "fetched": "2026-10-18"
+  },
+  "gitattributes.adoc": {
+    "url": "https://raw.githubusercontent.com/git/git/v2.54.0/Documentation/gitattributes.adoc",
+    "revision": "git v2.54.0",
+    "size": 50492,
+    "sha256": "701dfca386fc865b01187d868f2c6e6542c8258439262c783b5cd6738d78b3a5",
+    "licence": "GPL-2.0-only",
+    "fetched": "2026-10-18"
+  }
+}

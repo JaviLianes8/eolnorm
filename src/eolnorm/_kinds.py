@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
-from typing import Literal
+from typing import Literal, cast
+
+from ._checks import option
 
 Style = Literal["lf", "crlf", "cr"]
 Kind = Literal["lf", "crlf", "cr", "vt", "ff", "fs", "gs", "rs", "nel", "ls", "ps"]
@@ -20,29 +22,25 @@ _CHARS: dict[str, Kind] = {
     "\x1d": "gs",
     "\x1e": "rs",
     "\x85": "nel",
-    "\u2028": "ls",
-    "\u2029": "ps",
+    "\N{LINE SEPARATOR}": "ls",
+    "\N{PARAGRAPH SEPARATOR}": "ps",
 }
 # UAX #14: BK (VT, FF, LS, PS), CR, LF and NL are the mandatory breaks. str.splitlines
 # also splits on the three information separators FS, GS and RS.
 _SETS: dict[Breaks, str] = {
     "ascii": "\n\r",
-    "unicode": "\n\r\x0b\x0c\x85\u2028\u2029",
-    "splitlines": "\n\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029",
+    "unicode": "\n\r\x0b\x0c\x85\N{LINE SEPARATOR}\N{PARAGRAPH SEPARATOR}",
+    "splitlines": "\n\r\x0b\x0c\x1c\x1d\x1e\x85\N{LINE SEPARATOR}\N{PARAGRAPH SEPARATOR}",
 }
 _SEQUENCES: dict[Style, str] = {"lf": "\n", "crlf": "\r\n", "cr": "\r"}
 
 
 def check_breaks(breaks: object) -> Breaks:
-    if not isinstance(breaks, str) or breaks not in _SETS:
-        raise ValueError(f"unknown boundary set: {breaks!r}")
-    return breaks
+    return cast(Breaks, option("boundary set", breaks, _SETS))
 
 
 def check_style(to: object) -> Style:
-    if not isinstance(to, str) or to not in _SEQUENCES:
-        raise ValueError(f"unknown style: {to!r}")
-    return to
+    return cast(Style, option("style", to, _SEQUENCES))
 
 
 def kinds(breaks: Breaks) -> tuple[Kind, ...]:
@@ -59,13 +57,37 @@ def sequence(to: Style) -> str:
     return _SEQUENCES[to]
 
 
+def tally(text: str | bytes, breaks: Breaks) -> dict[str, int]:
+    """Count the endings of exact, checked input, keys in the order of ``kinds``.
+
+    CRLF is the only two-character ending and no two CRLFs can overlap, so every CR and LF
+    beyond the CRLF pairs is a lone one; the other kinds are single characters.
+    """
+    if isinstance(text, bytes):
+        pairs = text.count(b"\r\n")
+        return {"lf": text.count(b"\n") - pairs, "crlf": pairs, "cr": text.count(b"\r") - pairs}
+    pairs = text.count("\r\n")
+    counted = {"lf": text.count("\n") - pairs, "crlf": pairs, "cr": text.count("\r") - pairs}
+    for char in _SETS[breaks][2:]:
+        counted[_CHARS[char]] = text.count(char)
+    return counted
+
+
 def _build(chars: str) -> re.Pattern[str]:
     return re.compile("\r\n|[" + re.escape(chars) + "]")
 
 
-_TEXT_PATTERNS = {breaks: _build(chars) for breaks, chars in _SETS.items()}
-BYTES_PATTERN = re.compile(rb"\r\n|[\r\n]")
+# Every ending of a set, and the same without a lone CR (for keep_lone_cr): a CR is then
+# matched only as the start of a CRLF, so a lone one is never touched.
+_TEXT = {breaks: _build(chars) for breaks, chars in _SETS.items()}
+_TEXT_KEEP = {breaks: _build(chars.replace("\r", "")) for breaks, chars in _SETS.items()}
+_BYTES = re.compile(rb"\r\n|[\r\n]")
+_BYTES_KEEP = re.compile(rb"\r\n|\n")
 
 
-def text_pattern(breaks: Breaks) -> re.Pattern[str]:
-    return _TEXT_PATTERNS[breaks]
+def text_pattern(breaks: Breaks, keep_lone_cr: bool = False) -> re.Pattern[str]:
+    return (_TEXT_KEEP if keep_lone_cr else _TEXT)[breaks]
+
+
+def bytes_pattern(keep_lone_cr: bool = False) -> re.Pattern[bytes]:
+    return _BYTES_KEEP if keep_lone_cr else _BYTES

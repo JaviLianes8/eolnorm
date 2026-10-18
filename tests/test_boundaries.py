@@ -11,7 +11,7 @@ import pytest
 from eolnorm import Breaks, counts, normalize
 
 CRLF = chr(13) + chr(10)
-LINEBREAK = Path(__file__).parent / "vectors" / "unicode" / "LineBreak.txt"
+LINEBREAK = Path(__file__).parent / "upstream" / "LineBreak.txt"
 
 # One character of every set, plus CRLF and ordinary characters, to build random texts.
 ALPHABET = ["a", "b", " ", "\r\n", "\n", "\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e"]
@@ -50,7 +50,7 @@ def test_ascii_set_is_cr_and_lf() -> None:
     assert _breaking("ascii") == {0x0A, 0x0D}
 
 
-@pytest.mark.skipif(not LINEBREAK.exists(), reason="run scripts/fetch_vectors.py")
+@pytest.mark.skipif(not LINEBREAK.exists(), reason="run scripts/fetch_upstream.py")
 def test_unicode_set_is_the_uax14_mandatory_breaks() -> None:
     # Classes BK, CR, LF and NL in LineBreak.txt are the mandatory breaks (UAX #14 LB4, LB5).
     mandatory: set[int] = set()
