@@ -8,7 +8,9 @@ upgrade from; every behaviour change is still listed against 0.2.0, the last tag
 Progress:
 - [x] Branch `release/1.0.0` created from `main` (ba7c9e9, 0.2.0)
 - [x] Baseline gates on 0.2.0
-- [ ] API review and 1.0.0 changes (item 1)
+- [x] API review and 1.0.0 changes (item 1)
+- [x] Contracts for every 1.0.0 change (signatures, errors, subclasses, pickles, file rules,
+  command line streams)
 - [ ] Errors, typing, docstrings and doctests (items 2 to 5)
 - [ ] Ground truth: sources fetched live, reference programs (item 7)
 - [ ] Contract, fuzz and author mutation round (items 6, 9, 18)

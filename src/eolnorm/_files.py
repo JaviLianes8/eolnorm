@@ -19,12 +19,13 @@ from ._kinds import Breaks, Detected, Style, check_breaks, check_style, kinds, t
 class FileReport:
     r"""What a file holds and whether normalizing it changed it (or would, in a dry run).
 
-    ``path`` is the path as given, ``binary`` tells a file that was left alone, ``bom``
-    whether it starts with a byte order mark, and ``counts`` and ``detected`` describe the
-    file before any change, as `counts` and `detect` do. ``encoding`` names the codec in
-    play, as ``codecs.lookup`` spells it: the one a byte order mark or the caller chose, or
-    utf-8 for the Unicode sets. It is None when no codec was involved, which is exact for
-    any ASCII-compatible encoding, and for a binary file, where nothing is counted.
+    ``path`` is the path as given, as a string, ``bom`` whether a byte order mark was found
+    (and kept), and ``counts`` and ``detected`` describe the file before any change, as
+    `counts` and `detect` do. ``encoding`` names the codec in play, as ``codecs.lookup``
+    spells it: the one a byte order mark or the caller chose, or utf-8 for the Unicode sets.
+    It is None when no codec was involved, which is exact for any ASCII-compatible encoding.
+    A ``binary`` file is left alone and not interpreted at all: its ``encoding`` is None,
+    ``bom`` is False and every count is zero.
 
     >>> report = FileReport("a.txt", False, None, False, {"lf": 2, "crlf": 0, "cr": 0}, "lf")
     >>> report  # doctest: +NORMALIZE_WHITESPACE
@@ -51,15 +52,26 @@ def _path(path: object) -> str:
     return name
 
 
-def _read(name: str) -> bytes:
+def _regular(mode: int, name: str) -> None:
     # Only regular files: reading a pipe could block forever, and replacing one (or a
     # device) with a regular file would change what the path is.
-    mode = os.stat(name).st_mode
     if stat.S_ISDIR(mode):
         raise IsADirectoryError(errno.EISDIR, os.strerror(errno.EISDIR), name)
     if not stat.S_ISREG(mode):
         raise shutil.SpecialFileError(errno.ENOTSUP, "not a regular file", name)
-    with open(name, "rb") as handle:
+
+
+# Opening a pipe without O_NONBLOCK waits for a writer; O_BINARY keeps Windows from
+# translating the bytes.
+_FLAGS = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NONBLOCK", 0)
+_FLAGS |= getattr(os, "O_NOCTTY", 0)
+
+
+def _read(name: str) -> bytes:
+    _regular(os.stat(name).st_mode, name)
+    # Checked again on the open descriptor, in case the path was replaced in between.
+    with open(os.open(name, _FLAGS), "rb") as handle:
+        _regular(os.fstat(handle.fileno()).st_mode, name)
         return handle.read()
 
 

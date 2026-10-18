@@ -34,8 +34,10 @@ do the `eolnorm` command's options, output lines and exit codes.
 - `UnicodeDecodeError` positions count from the start of the file, byte order mark included.
 - `scan_file` and `normalize_file` read regular files only: a directory raises
   `IsADirectoryError` on every system (it was `PermissionError` on Windows) and a pipe, socket
-  or device raises `shutil.SpecialFileError` (an `OSError`) instead of being read. A `path`
-  that is neither a `str` nor an `os.PathLike[str]` raises `TypeError`.
+  or device raises `shutil.SpecialFileError` (an `OSError`) instead of being read. The check
+  is made again on the opened file, which is opened without waiting for a pipe's writer, so
+  a path swapped in between is refused too. A `path` that is neither a `str` nor an
+  `os.PathLike[str]` raises `TypeError`.
 - Error messages quote at most 40 characters of an argument and of a type name.
 - A `str` or `bytes` subclass is read through the base type, so none of its methods runs,
   and the results are plain `str` or `bytes`; an object that only claims to be a string
@@ -46,7 +48,9 @@ do the `eolnorm` command's options, output lines and exit codes.
 - The command line: when its reader goes away (`eolnorm ... | head`) it stops writing
   quietly, still processes every path and exits with the status the work earned (0.2.0
   reported every later line as a failure of the file and exited 120); any other failure to
-  write standard output is reported and exits 2. A closed standard input gives exit 2 with a
+  write standard output is reported and exits 2, a closed standard output included once
+  there is something to write (0.2.0 dropped the report and exited 0). A closed standard
+  input gives exit 2 with a
   message instead of a traceback. Error lines name the path once, usage errors are cut at
   300 characters, and `python -m eolnorm` only runs the tool when executed.
 

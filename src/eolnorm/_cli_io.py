@@ -88,9 +88,11 @@ class Output:
 
     def _write(self, name: str, text: str) -> None:
         stream = getattr(sys, name)
-        if stream is None or name in self._silenced:
+        if name in self._silenced or (stream is None and not text):
             return
         try:
+            if stream is None:  # the descriptor was closed before the run started
+                raise OSError(errno.EBADF, "it is closed")
             if text:
                 stream.write(text)
             stream.flush()
