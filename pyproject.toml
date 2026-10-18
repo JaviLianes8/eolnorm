@@ -48,7 +48,7 @@ Funding = "https://buymeacoffee.com/jlianesglrs"
 packages = ["src/eolnorm"]
 
 [tool.hatch.build.targets.sdist]
-exclude = ["IMPROVEMENTS-round.md", "tests/vectors/unicode/*.txt", "!tests/vectors/unicode/MANIFEST.txt"]
+exclude = ["IMPROVEMENTS-round.md", "CERT-1.0-*.md", "tests/vectors/unicode/*.txt", "!tests/vectors/unicode/MANIFEST.txt"]
 
 [tool.ruff]
 line-length = 100
