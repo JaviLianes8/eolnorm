@@ -1,8 +1,15 @@
 # eolnorm
 
+[![Lianes8 Certified](https://lianes8studio.com/certified/lianes8-certified-badge.svg)](https://lianes8studio.com/certified)
+
 Detect, normalize and count line endings in text, bytes, streams and files. It can match
 git's `text` conversion byte for byte, knows the Unicode line boundaries, rewrites files
 atomically, and has no dependencies.
+
+The [GUIDE](https://github.com/JaviLianes8/eolnorm/blob/main/GUIDE.md) describes every
+function, the errors each one raises and the command line contract in detail; the
+[CHANGELOG](https://github.com/JaviLianes8/eolnorm/blob/main/CHANGELOG.md) lists what changed
+in each release.
 
 ## Install
 
@@ -161,15 +168,31 @@ usage or a file that could not be read or decoded; the other files are still pro
 
 ## Why
 
-The standard library resolves line endings only while decoding a file in universal newline
-mode. There is no helper to inspect, convert or count the endings of data already in
-memory, to do it on bytes without decoding, to match git's rules, or to fix a file in
-place safely. `eolify` is a compiled extension focused on fast conversion; `eolnorm` is pure
-Python and covers detection, counting, Unicode boundaries, streams and files.
+Python turns line endings into LF while it decodes text in universal newline mode
+(`open`, `io.TextIOWrapper`, `io.IncrementalNewlineDecoder`), and `str.splitlines` splits on
+a wider set, but nothing in the standard library counts endings, converts `bytes` without
+decoding them, applies git's rule for a lone CR, or rewrites a file in place without
+touching anything else. A `str.replace` chain in the wrong order turns a CRLF into two
+endings. The closest package, `eolify` 0.1.7, is a Rust extension that converts text, streams and
+file copies between LF and CRLF only: it does not detect or count endings, has no CR target,
+no Unicode boundaries, no git rule for a lone CR and no binary check (it converts the CR LF
+in a PNG header), and it copies to a new file: given the same path as source and destination
+with `overwrite=True`, 0.1.7 left the file empty on Windows.
+`eolnorm` is pure Python, typed, and checked against git's own source and binary, the
+Unicode line breaking data, the CPython documentation and interpreter, and `eolify` itself.
+
+## Development
+
+`python scripts/fetch_upstream.py` downloads the sources listed in
+`tests/upstream/MANIFEST.json` (the Unicode data and UAX #14, CPython documentation pages,
+git's `convert.c` and gitattributes documentation); they are not part of the repository and
+their tests skip without them. `pip install eolify` adds the reference implementation, and
+an installed `git` is used when present. `scripts/check.ps1` runs format, lint, types and
+tests. Set `EOLNORM_E2E=1` to also build the wheel and test the installed package.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/JaviLianes8/eolnorm/blob/main/LICENSE).
 
 ## Links
 

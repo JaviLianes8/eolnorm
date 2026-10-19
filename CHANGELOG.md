@@ -6,12 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-10-18
+## [1.0.0] - 2026-10-19
 
 The public API is now stable: `counts`, `detect`, `normalize`, `Normalizer`, `is_binary`,
 `scan_file`, `normalize_file`, `FileReport` and the `Style`, `Kind`, `Detected` and `Breaks`
 aliases keep their names, parameters, defaults, results and error types until 2.0.0, and so
 do the `eolnorm` command's options, output lines and exit codes.
+
+### Added
+
+- `GUIDE.md`: every public name in detail, the errors each one raises and the command line
+  contract, with examples that run as tests.
 
 ### Changed
 
