@@ -21,9 +21,12 @@ class FileReport:
 
     ``path`` is the path as given, as a string, ``bom`` whether a byte order mark was found
     (and kept), and ``counts`` and ``detected`` describe the file before any change, as
-    `counts` and `detect` do. ``encoding`` names the codec in play, as ``codecs.lookup``
-    spells it: the one a byte order mark or the caller chose, or utf-8 for the Unicode sets.
-    It is None when no codec was involved, which is exact for any ASCII-compatible encoding.
+    `counts` and `detect` do. ``encoding`` names the codec that decoded the file, as
+    ``codecs.lookup`` spells it: the one a byte order mark picks (so ``utf-8-sig`` is
+    reported as utf-8, and ``utf-16`` as the byte order of its mark), else the one the caller
+    chose, else utf-8 for the Unicode sets. A mark always means the file is decoded. It is
+    None when the bytes were handled undecoded (the ASCII set, no mark and no ``encoding``),
+    which is exact for any ASCII-compatible encoding.
     A ``binary`` file is left alone and not interpreted at all: its ``encoding`` is None,
     ``bom`` is False and every count is zero.
 

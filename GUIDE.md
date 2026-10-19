@@ -17,14 +17,14 @@ checker catches a misspelt option:
 
 ## Boundary sets
 
-Every function takes `breaks=`, a `Breaks` value naming which characters end a line. CRLF
-is one ending in every set, never a CR plus an LF.
+Every function but `is_binary` takes `breaks=`, a `Breaks` value naming which characters
+end a line. CRLF is one ending in every set, never a CR plus an LF.
 
 | `breaks` | Kinds, in report order | Checked against |
 | --- | --- | --- |
 | `"ascii"` (default) | `lf`, `crlf`, `cr` | the universal newlines of the CPython glossary, `io` and `open` docs, and the running interpreter's `io` module |
-| `"unicode"` | adds `vt`, `ff`, `nel`, `ls`, `ps` | UAX #14 rules LB4 and LB5 (classes BK, CR, LF, NL) and their code points in `LineBreak.txt` 18.0.0 |
-| `"splitlines"` | adds `fs`, `gs`, `rs` | the `str.splitlines` table and every code point asked of the running interpreter |
+| `"unicode"` | `lf`, `crlf`, `cr`, `vt`, `ff`, `nel`, `ls`, `ps` | UAX #14 rules LB4 and LB5 (classes BK, CR, LF, NL) and their code points in `LineBreak.txt` 18.0.0 |
+| `"splitlines"` | `lf`, `crlf`, `cr`, `vt`, `ff`, `fs`, `gs`, `rs`, `nel`, `ls`, `ps` | the `str.splitlines` table and every code point asked of the running interpreter |
 
 The two Unicode sets need decoded text; with `bytes` they raise `ValueError`.
 
@@ -104,7 +104,7 @@ keep_lone_cr, encoding, dry_run)` rewrites. Both read regular files only and ret
 | --- | --- |
 | `path` | the path as given, as a `str` |
 | `binary` | the file looked binary and was left alone (all counts are zero) |
-| `encoding` | the codec used, as `codecs.lookup` spells it, or `None` when the bytes were handled undecoded |
+| `encoding` | the codec that decoded the file, as `codecs.lookup` spells it, or `None` when the bytes were handled undecoded |
 | `bom` | a byte order mark was found and kept |
 | `counts`, `detected` | the endings before any change, as `counts` and `detect` report them |
 | `changed` | the bytes changed, or would have with `dry_run=True`; always `False` from `scan_file` |
@@ -112,9 +112,12 @@ keep_lone_cr, encoding, dry_run)` rewrites. Both read regular files only and ret
 How the codec is chosen:
 
 - A UTF-8, UTF-16 or UTF-32 byte order mark picks the codec, and the same mark is written
-  back.
-- Without a mark and without `encoding=`, the ASCII set works on the undecoded bytes and the
-  Unicode sets decode UTF-8.
+  back. The rest of the file is always decoded with that codec, so bytes that are not valid
+  in it raise `UnicodeDecodeError` whatever the options. `encoding` reports the codec of the
+  mark: `"utf-8"` for a UTF-8 mark (also when `"utf-8-sig"` was named), `"utf-16-le"` or
+  `"utf-16-be"` when `"utf-16"` was named, and so on; `bom` says whether a mark was there.
+- Without a mark and without `encoding=`, the ASCII set works on the undecoded bytes
+  (`encoding` is `None`) and the Unicode sets decode UTF-8.
 - `encoding=` names any text codec. A UTF codec still recognises its own marks; plain
   `"utf-16"` or `"utf-32"` without a mark raises `ValueError`, since the byte order is
   unknown. Other codecs decode every byte as text.
@@ -133,8 +136,10 @@ access lists of the original are not kept.
 
 ## Errors
 
-Arguments are checked before any file is read or any output produced, and every message
-quotes at most 40 characters of a value or a type name.
+Arguments are checked before any file is read or any output produced. A `TypeError` or
+`ValueError` about an argument quotes at most 40 characters of the value or of a type name.
+An `OSError` follows the system's convention instead: the path is in its `filename`
+attribute and in its message, whole, as in the errors the system raises itself.
 
 | Raised | When |
 | --- | --- |
@@ -175,6 +180,10 @@ keyword arguments of the same names. `-` as the only path, with `--to` and witho
 | 1 | `--check` found a file that would change |
 | 2 | bad usage, or a path that could not be read, decoded or written (the other paths are still processed), or standard output could not be written |
 
-Errors go to standard error as `eolnorm: PATH: reason`. A reader that goes away early, as
-in `eolnorm *.txt | head`, is not an error: the remaining output is dropped and every path is
-still processed. `python -m eolnorm` runs the same tool.
+Errors go to standard error as `eolnorm: PATH: reason`, with the path and the reason each
+cut after 300 characters. Every path the tool prints, on either stream, has its control
+characters (C0, DEL, C1, and the line and paragraph separators U+2028 and U+2029) written
+as Python escapes such as `\x1b`, so a file name cannot move the cursor, retitle the
+terminal or start a line of its own; report lines on standard output keep the path whole
+otherwise. A reader that goes away early, as in `eolnorm *.txt | head`, is not an error: the
+remaining output is dropped and every path is still processed. `python -m eolnorm` runs the same tool.

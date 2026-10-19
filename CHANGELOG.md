@@ -34,8 +34,12 @@ do the `eolnorm` command's options, output lines and exit codes.
 - The binary check also runs after a UTF-8 byte order mark (on the whole file, mark
   included, as git counts it): such a file with NUL or control bytes is reported binary and
   left alone.
-- An explicit `encoding=` always decodes the file, so a file that is not valid in that codec
-  raises `UnicodeDecodeError` even after a UTF-8 mark.
+- A byte order mark always means the file is decoded with the mark's codec: after a UTF-8
+  mark, bytes that are not valid UTF-8 raise `UnicodeDecodeError` with every option (0.2.0
+  passed them through undecoded under the default ASCII set while reporting
+  `encoding="utf-8"`). An explicit `encoding=` always decodes the file too. `FileReport.encoding`
+  is `None` exactly when the bytes were handled undecoded, and names the mark's codec when
+  there is one (`"utf-8"` also when `"utf-8-sig"` was named).
 - `UnicodeDecodeError` positions count from the start of the file, byte order mark included.
 - `scan_file` and `normalize_file` read regular files only: a directory raises
   `IsADirectoryError` on every system (it was `PermissionError` on Windows) and a pipe, socket
@@ -43,7 +47,9 @@ do the `eolnorm` command's options, output lines and exit codes.
   is made again on the opened file, which is opened without waiting for a pipe's writer, so
   a path swapped in between is refused too. A `path` that is neither a `str` nor an
   `os.PathLike[str]` raises `TypeError`.
-- Error messages quote at most 40 characters of an argument and of a type name.
+- A `TypeError` or `ValueError` about an argument quotes at most 40 characters of it and of
+  a type name. An `OSError` keeps the whole path in its `filename` and message, as the
+  system's own errors do.
 - A `str` or `bytes` subclass is read through the base type, so none of its methods runs,
   and the results are plain `str` or `bytes`; an object that only claims to be a string
   through `__class__` is refused.
@@ -56,8 +62,11 @@ do the `eolnorm` command's options, output lines and exit codes.
   write standard output is reported and exits 2, a closed standard output included once
   there is something to write (0.2.0 dropped the report and exited 0). A closed standard
   input gives exit 2 with a
-  message instead of a traceback. Error lines name the path once, usage errors are cut at
-  300 characters, and `python -m eolnorm` only runs the tool when executed.
+  message instead of a traceback. Error lines name the path once, cut after 300
+  characters, usage errors are cut at 300 characters, and `python -m eolnorm` only runs the
+  tool when executed. Every path the tool prints, and every usage error, has its control
+  characters written as Python escapes (`\x1b`, `\n`, `\u2028`), so a file name cannot send
+  escape sequences to the terminal or split a line.
 
 ## [0.2.0] - 2026-10-13
 

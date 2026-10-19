@@ -3,7 +3,7 @@
 Four ``Literal`` type aliases name the strings the functions take and report:
 
 - ``Style``: a target ending for `normalize`, `Normalizer` and `normalize_file`.
-- ``Breaks``: a boundary set, the ``breaks=`` argument of every function.
+- ``Breaks``: a boundary set, the ``breaks=`` argument of every function but `is_binary`.
 - ``Kind``: the name of one ending, a key of `counts`.
 - ``Detected``: what `detect` reports, a ``Kind``, ``"mixed"`` or ``"none"``.
 
