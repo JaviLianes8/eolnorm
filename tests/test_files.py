@@ -82,10 +82,15 @@ def test_an_explicit_encoding_handles_utf16_without_a_mark(tmp_path: Path) -> No
     assert (report.encoding, report.bom, report.binary) == ("utf-16-be", False, False)
 
 
-def test_generic_utf16_without_a_mark_needs_a_byte_order(tmp_path: Path) -> None:
-    path = _file(tmp_path, "a\r\n".encode("utf-16-le"))
+@pytest.mark.parametrize("codec", ["utf-16", "utf-32"])
+def test_generic_utf_codec_without_a_mark_needs_a_byte_order(tmp_path: Path, codec: str) -> None:
+    data = "a\r\n".encode(f"{codec}-le")
+    path = _file(tmp_path, data)
     with pytest.raises(ValueError, match="byte order"):
-        normalize_file(path, encoding="utf-16")
+        normalize_file(path, encoding=codec)
+    with pytest.raises(ValueError, match="byte order"):
+        scan_file(path, encoding=codec)
+    assert path.read_bytes() == data
 
 
 def test_generic_utf16_with_a_mark_is_accepted(tmp_path: Path) -> None:
@@ -133,7 +138,7 @@ def test_utf8_sig_without_a_mark_does_not_add_one(tmp_path: Path) -> None:
 
 def test_unknown_encoding_is_a_value_error(tmp_path: Path) -> None:
     path = _file(tmp_path, b"a\n")
-    with pytest.raises(ValueError, match="unknown encoding"):
+    with pytest.raises(ValueError, match="unknown text encoding"):
         scan_file(path, encoding="no-such-codec")
     with pytest.raises(TypeError, match="encoding must be"):
         scan_file(path, encoding=8)  # type: ignore[arg-type]

@@ -14,6 +14,8 @@ from pathlib import Path
 
 import pytest
 
+import eolnorm
+
 ROOT = Path(__file__).resolve().parents[1]
 
 pytestmark = pytest.mark.skipif(
@@ -87,3 +89,31 @@ def test_installed_wheel_end_to_end(tmp_path: Path) -> None:
     assert (work / "a.txt").read_bytes() == b"x\ny\n"
     filtered = _run(python, "-I", "-m", "eolnorm", "--to", "crlf", "-", cwd=work, stdin=b"a\nb")
     assert filtered == b"a\r\nb"
+
+
+def test_sdist_and_wheel_carry_only_what_they_should(tmp_path: Path) -> None:
+    import tarfile
+
+    _run(sys.executable, "-m", "build", "--outdir", tmp_path, ROOT)
+    (sdist,) = tmp_path.glob("eolnorm-*.tar.gz")
+    (wheel,) = tmp_path.glob("eolnorm-*.whl")
+    with tarfile.open(sdist) as archive:
+        inside = {name.split("/", 1)[1] for name in archive.getnames() if "/" in name}
+    for wanted in ("LICENSE", "README.md", "GUIDE.md", "CHANGELOG.md", "src/eolnorm/py.typed"):
+        assert wanted in inside, wanted
+    assert "tests/upstream/MANIFEST.json" in inside
+    assert not [n for n in inside if n.startswith("tests/upstream/") and "MANIFEST" not in n]
+    assert not [n for n in inside if n.startswith(("IMPROVEMENTS", "CERT-")) or "__pycache__" in n]
+    names = zipfile.ZipFile(wheel).namelist()
+    assert {n for n in names if not n.startswith("eolnorm-")} == {
+        f"eolnorm/{module}" for module in (*MODULES, "py.typed")
+    }
+    assert any(n.endswith(".dist-info/licenses/LICENSE") for n in names)
+    metadata = zipfile.ZipFile(wheel).read(f"eolnorm-{VERSION}.dist-info/METADATA").decode()
+    assert "Classifier: Development Status :: 5 - Production/Stable" in metadata
+    requires = [line for line in metadata.splitlines() if line.startswith("Requires-Dist:")]
+    assert all("extra ==" in line for line in requires), requires
+
+
+MODULES = [p.name for p in (ROOT / "src" / "eolnorm").glob("*.py")]
+VERSION = eolnorm.__version__

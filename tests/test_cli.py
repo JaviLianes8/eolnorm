@@ -83,7 +83,9 @@ def test_decode_and_encoding_errors_exit_two(
 ) -> None:
     path = _file(tmp_path, "a.txt", b"\x80\r\n")
     assert main(["--to", "lf", "--encoding", "utf-8", path]) == 2
-    assert main(["--encoding", "nope", path]) == 2
+    with pytest.raises(SystemExit) as raised:
+        main(["--encoding", "nope", path])
+    assert raised.value.code == 2
     assert capsys.readouterr().err.count("eolnorm: ") == 2
 
 

@@ -1,8 +1,0 @@
-# Third-party data: the Unicode Character Database line break property. Not committed;
-# fetch it with
-#   python scripts/fetch_vectors.py
-# Revision: Unicode 18.0.0
-# URL: https://www.unicode.org/Public/18.0.0/ucd/<name>
-# Licence: Unicode License v3 (https://www.unicode.org/license.txt)
-# sha256  size  name
-ae8cf1970c73f3f1a12d77852df96c4b2b1723ca8b388e36bb5739250c6849de  266206  LineBreak.txt
