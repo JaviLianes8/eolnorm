@@ -49,10 +49,6 @@ def kinds(breaks: Breaks) -> tuple[Kind, ...]:
     return ("lf", "crlf", "cr", *names[2:])
 
 
-def name_of(ending: str) -> Kind:
-    return "crlf" if ending == "\r\n" else _CHARS[ending]
-
-
 def sequence(to: Style) -> str:
     return _SEQUENCES[to]
 

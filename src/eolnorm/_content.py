@@ -79,7 +79,8 @@ def decode(raw: bytes, breaks: Breaks, wanted: str | None) -> Content:
     """Split ``raw`` into a kept prefix (a byte order mark) and a body to normalize.
 
     ``wanted`` is a name from `check_encoding`. The body stays undecoded bytes only when no
-    codec was named, the set is the ASCII one and no UTF-16 or UTF-32 mark is present.
+    codec was named, the set is the ASCII one and no byte order mark is present: a mark
+    names its codec, so the body after it is always decoded (and must be valid).
     """
     found = _mark(raw, wanted)
     if found is not None:
@@ -92,8 +93,8 @@ def decode(raw: bytes, breaks: Breaks, wanted: str | None) -> Content:
     # git's statistics hold for ASCII-compatible bytes only: UTF-16 text is full of NULs.
     if _ascii_compatible(codec) and looks_binary(raw):
         return Content(raw, b"", None, None)
-    if wanted is None and breaks == "ascii" and codec == "utf-8":
-        return Content(raw, bom, raw[len(bom) :], "utf-8" if bom else None)
+    if wanted is None and breaks == "ascii" and not bom:
+        return Content(raw, b"", raw, None)
     return Content(raw, bom, _text(raw, len(bom), codec), codec)
 
 

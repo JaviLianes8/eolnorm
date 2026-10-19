@@ -7,9 +7,9 @@ import random
 
 import pytest
 
-from eolnorm import Normalizer, counts, normalize
+from eolnorm import Normalizer, counts, detect, normalize
 
-PIECES = ["a", "\r\n", "\r", "\n", "\x85", "\u2028", "\x0c", "b\r"]
+PIECES = ["a", "\r\n", "\r", "\n", "\x85", "\u2028", "\x0c", "\x1c", "b\r"]
 
 
 def _split(text: str, rng: random.Random) -> list[str]:
@@ -18,7 +18,7 @@ def _split(text: str, rng: random.Random) -> list[str]:
     return [text[start:end] for start, end in itertools.pairwise(edges)]
 
 
-@pytest.mark.parametrize("breaks", ["ascii", "unicode"])
+@pytest.mark.parametrize("breaks", ["ascii", "unicode", "splitlines"])
 @pytest.mark.parametrize("to", ["lf", "crlf", "cr"])
 @pytest.mark.parametrize("keep", [False, True])
 def test_any_chunking_gives_the_one_shot_result(breaks: str, to: str, keep: bool) -> None:
@@ -31,6 +31,7 @@ def test_any_chunking_gives_the_one_shot_result(breaks: str, to: str, keep: bool
         expected = normalize(text, to, breaks=breaks, keep_lone_cr=keep)  # type: ignore[arg-type]
         assert out == expected, (text, chunks)
         assert stream.counts == counts(text, breaks=breaks), (text, chunks)  # type: ignore[arg-type]
+        assert stream.detected == detect(text, breaks=breaks), (text, chunks)  # type: ignore[arg-type]
 
 
 def test_crlf_split_across_chunks_is_one_ending() -> None:
@@ -40,6 +41,16 @@ def test_crlf_split_across_chunks_is_one_ending() -> None:
     assert stream.feed(b"\ntwo") == b"\ntwo"
     assert stream.counts == {"lf": 0, "crlf": 1, "cr": 0}
     assert stream.detected == "crlf"
+
+
+@pytest.mark.parametrize(("breaks", "kind"), [("unicode", "nel"), ("splitlines", "fs")])
+def test_detected_names_the_kinds_of_the_unicode_sets(breaks: str, kind: str) -> None:
+    stream = Normalizer(breaks=breaks)  # type: ignore[arg-type]
+    char = {"nel": "\x85", "fs": "\x1c"}[kind]
+    stream.feed("a" + char + "b")
+    assert stream.detected == kind == detect("a" + char + "b", breaks=breaks)  # type: ignore[arg-type]
+    stream.feed("\r\n")
+    assert stream.detected == "mixed"
 
 
 def test_final_releases_a_held_cr() -> None:

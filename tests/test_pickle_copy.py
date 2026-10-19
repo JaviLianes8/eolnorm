@@ -70,3 +70,13 @@ def test_a_report_repr_names_every_field() -> None:
         "FileReport(path='p', binary=True, encoding=None, bom=False, "
         "counts={'lf': 0, 'crlf': 0, 'cr': 0}, detected='none', changed=False)"
     )
+
+
+def test_reports_compare_by_every_field_and_hash_without_the_counts() -> None:
+    def report(lf: int) -> FileReport:
+        return FileReport("a", False, None, False, {"lf": lf, "crlf": 0, "cr": 0}, "lf")
+
+    assert report(1) == report(1)
+    assert report(1) != report(9)
+    assert hash(report(1)) == hash(report(9))  # a dict cannot be hashed: counts take no part
+    assert len({report(1), report(1)}) == 1

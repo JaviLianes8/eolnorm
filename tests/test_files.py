@@ -59,10 +59,10 @@ def test_a_byte_order_mark_picks_the_codec_and_is_kept(
 
 
 def test_a_utf8_mark_keeps_the_ascii_set_byte_exact(tmp_path: Path) -> None:
-    # Not valid UTF-8 after the mark, but the ASCII set never needs to decode it.
-    path = _file(tmp_path, codecs.BOM_UTF8 + b"caf\xe9\r\n")
+    # The body after the mark is decoded: invalid UTF-8 is refused (see test_files_rules).
+    path = _file(tmp_path, codecs.BOM_UTF8 + b"caf\xc3\xa9\r\n")
     report = normalize_file(path)
-    assert path.read_bytes() == codecs.BOM_UTF8 + b"caf\xe9\n"
+    assert path.read_bytes() == codecs.BOM_UTF8 + b"caf\xc3\xa9\n"
     assert (report.encoding, report.bom, report.changed) == ("utf-8", True, True)
 
 

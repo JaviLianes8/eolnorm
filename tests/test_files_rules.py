@@ -51,12 +51,33 @@ def test_a_binary_file_has_no_mark_no_codec_and_zero_counts(tmp_path: Path) -> N
     assert report.counts == dict.fromkeys(["lf", "crlf", "cr", "vt", "ff", "nel", "ls", "ps"], 0)
 
 
-def test_an_explicit_encoding_always_decodes_after_a_utf8_mark(tmp_path: Path) -> None:
+@pytest.mark.parametrize("options", [{}, {"breaks": "unicode"}, {"encoding": "utf-8"}])
+def test_a_utf8_mark_always_decodes_the_file(tmp_path: Path, options: dict[str, str]) -> None:
+    # The mark names the codec, so invalid UTF-8 after it fails whatever the options.
     path = _file(tmp_path, BOM8 + b"caf\xe9\r\n")
-    assert normalize_file(path, dry_run=True).changed
+    for dry_run in (True, False):
+        with pytest.raises(UnicodeDecodeError):
+            normalize_file(path, dry_run=dry_run, **options)  # type: ignore[arg-type]
     with pytest.raises(UnicodeDecodeError):
-        normalize_file(path, encoding="utf-8")
+        scan_file(path, **options)  # type: ignore[arg-type]
     assert path.read_bytes() == BOM8 + b"caf\xe9\r\n"
+
+
+@pytest.mark.parametrize(
+    ("data", "encoding", "reported"),
+    [
+        (b"a\r\n", None, (None, False)),  # undecoded bytes: no codec in play
+        (BOM8 + b"a\r\n", None, ("utf-8", True)),
+        (BOM8 + b"a\r\n", "utf-8-sig", ("utf-8", True)),
+        (b"a\r\n", "utf-8-sig", ("utf-8", False)),
+        (BOM16 + b"a\x00", "utf-16", ("utf-16-le", True)),
+    ],
+)
+def test_the_reported_codec_is_the_one_that_decoded_the_body(
+    tmp_path: Path, data: bytes, encoding: str | None, reported: tuple[str | None, bool]
+) -> None:
+    report = scan_file(_file(tmp_path, data), encoding=encoding)
+    assert (report.encoding, report.bom) == reported
 
 
 @pytest.mark.parametrize(
@@ -64,6 +85,7 @@ def test_an_explicit_encoding_always_decodes_after_a_utf8_mark(tmp_path: Path) -
     [
         (BOM8 + b"ab\r\n\xc3", {"encoding": "utf-8"}, 7),
         (BOM8 + b"ab\r\n\xc3", {"breaks": "unicode"}, 7),
+        (BOM8 + b"ab\r\n\xc3", {}, 7),
         (BOM16 + b"a\x00\r\x00\n\x00b", {}, 8),
     ],
 )

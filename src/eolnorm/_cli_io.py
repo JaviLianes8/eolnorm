@@ -6,22 +6,34 @@ import argparse
 import contextlib
 import errno
 import os
+import re
 import sys
 from typing import NoReturn
 
-# Messages are cut here, so a huge argument or error text is never echoed back whole.
+# Each part of a message on standard error (a path, an argument, an error text) is cut
+# here, so a huge one is never echoed back whole. Report lines on standard output name
+# each path in full: they are the tool's data.
 MESSAGE_LIMIT = 300
+
+# C0 and C1 controls, DEL and the Unicode line and paragraph separators: a name holding one
+# could move the cursor, retitle the terminal or start a line of its own.
+_CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f\u2028\u2029]")
 
 
 def cut(text: str) -> str:
     return text if len(text) <= MESSAGE_LIMIT else text[:MESSAGE_LIMIT] + "..."
 
 
+def printable(text: str) -> str:
+    """``text`` with every control character written as its Python escape, such as ``\\x1b``."""
+    return _CONTROL.sub(lambda found: found.group().encode("unicode_escape").decode(), text)
+
+
 def reason(error: BaseException) -> str:
     """The words for ``error`` in a message: the system's own for an operating system error."""
     if isinstance(error, OSError) and error.strerror:
-        return cut(str(error.strerror))
-    return cut(str(error))
+        return cut(printable(str(error.strerror)))
+    return cut(printable(str(error)))
 
 
 def _reader_left(error: BaseException) -> bool:
@@ -108,7 +120,7 @@ class Output:
 
 
 class Parser(argparse.ArgumentParser):
-    """An argument parser whose error messages are bounded."""
+    """An argument parser whose error messages are bounded and free of control characters."""
 
     def error(self, message: str) -> NoReturn:
-        super().error(cut(message))
+        super().error(cut(printable(message)))

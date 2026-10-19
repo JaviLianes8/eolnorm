@@ -139,3 +139,50 @@ def test_a_reader_closing_a_real_pipe_early(tmp_path: Path) -> None:
     assert child.wait(timeout=120) == 0, err
     assert err == b""
     assert all((tmp_path / name).read_bytes() == b"a\n" for name in names)
+
+
+def test_a_closed_stream_object_counts_as_a_reader_that_left(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (path,) = _files(tmp_path, 1)
+    closed = io.StringIO()
+    closed.close()
+    monkeypatch.setattr(sys, "stdout", closed)
+    assert main(["--to", "lf", path]) == 0
+    assert Path(path).read_bytes() == b"a\n"
+    assert capsys.readouterr().err == ""
+
+
+@pytest.mark.parametrize("stderr", [None, "closed", "failing"])
+def test_losing_standard_error_never_changes_the_exit_code(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stderr: str | None
+) -> None:
+    def lose() -> None:
+        lost: object = None
+        if stderr == "closed":
+            lost = io.StringIO()
+            lost.close()
+        elif stderr == "failing":
+            lost = Failing(errno.EIO)
+        monkeypatch.setattr(sys, "stderr", lost)
+
+    out = io.BytesIO()
+    monkeypatch.setattr(sys, "stdin", io.TextIOWrapper(io.BytesIO(b"\x00\x01binary")))
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(out, write_through=True))
+    lose()
+    assert main(["--to", "lf", "-"]) == 0  # the binary note is lost, the data is not
+    assert out.getvalue() == b"\x00\x01binary"
+    lose()
+    assert main([str(tmp_path / "missing.txt"), *_files(tmp_path, 1)]) == 2
+
+
+@pytest.mark.parametrize("option", ["--help", "--version"])
+def test_help_and_version_into_a_reader_that_already_left(option: str) -> None:
+    env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src")}
+    command = [sys.executable, "-m", "eolnorm", option]
+    child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+    assert child.stdout is not None and child.stderr is not None
+    child.stdout.close()
+    err = child.stderr.read()
+    assert child.wait(timeout=120) == 0, err
+    assert err == b""

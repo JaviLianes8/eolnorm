@@ -6,7 +6,7 @@ import argparse
 import sys
 from collections.abc import Sequence
 
-from ._cli_io import Output, Parser, reason
+from ._cli_io import Output, Parser, cut, printable, reason
 from ._content import check_encoding, decode, fix
 from ._files import FileReport, normalize_file, scan_file
 
@@ -36,10 +36,11 @@ def _parser() -> Parser:
 
 
 def _describe(report: FileReport) -> str:
+    name = printable(report.path)
     if report.binary:
-        return f"{report.path}: binary"
-    present = ", ".join(f"{name}={count}" for name, count in report.counts.items() if count)
-    return f"{report.path}: {report.detected}" + (f" ({present})" if present else "")
+        return f"{name}: binary"
+    present = ", ".join(f"{kind}={count}" for kind, count in report.counts.items() if count)
+    return f"{name}: {report.detected}" + (f" ({present})" if present else "")
 
 
 def _filter(args: argparse.Namespace, out: Output) -> int:
@@ -76,9 +77,9 @@ def _one(path: str, args: argparse.Namespace, out: Output) -> bool:
         dry_run=args.check,
     )
     if report.binary:
-        out.line(f"skipped {path}: binary")
+        out.line(f"skipped {printable(path)}: binary")
     elif report.changed:
-        out.line(f"{'would fix' if args.check else 'fixed'} {path}")
+        out.line(f"{'would fix' if args.check else 'fixed'} {printable(path)}")
     return report.changed
 
 
@@ -101,7 +102,7 @@ def _run(argv: Sequence[str] | None, out: Output) -> int:
         try:
             pending |= _one(path, args, out)
         except (OSError, ValueError) as error:
-            out.note(f"eolnorm: {path}: {reason(error)}")
+            out.note(f"eolnorm: {cut(printable(path))}: {reason(error)}")
             failed = True
     if failed:
         return 2
