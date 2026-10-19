@@ -226,4 +226,8 @@ and M34 applied to 67fc3a7 now fails it.
 
 ## Gates (item 15)
 
-Run at the head of this report on another machine from a fresh clone: see the line below.
+Fresh clone of 6d444ee on another machine, CPython 3.14.2, fetched sources, git and `eolify`
+0.1.7 present, `EOLNORM_E2E=1`: `ruff format --check .` (42 files), `ruff check .` and
+`mypy --strict src tests` (35 files) exit 0; `pytest` 326 passed, 2 skipped (POSIX
+permission bits, named pipes), doctests included. The commit after it only fills in this
+paragraph.
