@@ -10,15 +10,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sys
 import urllib.request
 from pathlib import Path
 
-FOLDER = Path(__file__).resolve().parents[1] / "tests" / "upstream"
+MANIFEST = Path(__file__).resolve().parents[1] / "tests" / "upstream" / "MANIFEST.json"
+FOLDER = Path(os.environ.get("EOLNORM_UPSTREAM", str(MANIFEST.parent)))
 
 
 def main() -> int:
-    manifest = json.loads((FOLDER / "MANIFEST.json").read_text(encoding="utf-8"))
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    FOLDER.mkdir(parents=True, exist_ok=True)
     failed = False
     for name, entry in manifest.items():
         with urllib.request.urlopen(entry["url"], timeout=60) as response:

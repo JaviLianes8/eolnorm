@@ -127,7 +127,7 @@ def test_a_reader_closing_a_real_pipe_early(tmp_path: Path) -> None:
     names = [f"{index}.t" for index in range(1500)]
     for name in names:
         (tmp_path / name).write_bytes(b"a\r\n")
-    command = [sys.executable, "-m", "eolnorm", "--to", "lf", *names]
+    command = _command(tmp_path, "--to", "lf", *names)
     env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src")}
     child = subprocess.Popen(
         command, cwd=tmp_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
@@ -177,12 +177,22 @@ def test_losing_standard_error_never_changes_the_exit_code(
 
 
 @pytest.mark.parametrize("option", ["--help", "--version"])
-def test_help_and_version_into_a_reader_that_already_left(option: str) -> None:
+def test_help_and_version_into_a_reader_that_already_left(option: str, tmp_path: Path) -> None:
     env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src")}
-    command = [sys.executable, "-m", "eolnorm", option]
+    command = _command(tmp_path, option)
     child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
     assert child.stdout is not None and child.stderr is not None
     child.stdout.close()
     err = child.stderr.read()
     assert child.wait(timeout=120) == 0, err
     assert err == b""
+
+
+def _command(tmp_path: Path, *args: str) -> list[str]:
+    # Keep descriptor redirection in an ordinary disposable file during pipe tests.
+    (tmp_path / "output-sink").touch()
+    code = (
+        "import os, runpy, sys; os.devnull = sys.argv.pop(1); "
+        "runpy.run_module('eolnorm', run_name='__main__')"
+    )
+    return [sys.executable, "-c", code, str(tmp_path / "output-sink"), *args]

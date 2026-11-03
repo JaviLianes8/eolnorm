@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-10-19
+## [1.0.0] - 2026-11-03
 
 The public API is now stable: `counts`, `detect`, `normalize`, `Normalizer`, `is_binary`,
 `scan_file`, `normalize_file`, `FileReport` and the `Style`, `Kind`, `Detected` and `Breaks`

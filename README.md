@@ -186,9 +186,12 @@ Unicode line breaking data, the CPython documentation and interpreter, and `eoli
 `python scripts/fetch_upstream.py` downloads the sources listed in
 `tests/upstream/MANIFEST.json` (the Unicode data and UAX #14, CPython documentation pages,
 git's `convert.c` and gitattributes documentation); they are not part of the repository and
-their tests skip without them. `pip install eolify` adds the reference implementation, and
+their tests skip without them. Set `EOLNORM_UPSTREAM` to fetch and read these files in a
+different directory. `pip install eolify==0.1.7` adds the reference implementation, and
 an installed `git` is used when present. `scripts/check.ps1` runs format, lint, types and
 tests. Set `EOLNORM_E2E=1` to also build the wheel and test the installed package.
+Set `EOLNORM_PREVIOUS_WHEEL` to a downloaded PyPI 0.2.0 wheel to also test upgrading it
+in place, including saved reports and streams.
 
 ## License
 

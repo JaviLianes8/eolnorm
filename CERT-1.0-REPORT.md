@@ -1,9 +1,12 @@
 # eolnorm 1.0.0 certification report
 
-The 1.0.0 certification bar (19 items) applied to eolnorm. Nothing is on PyPI
-(`https://pypi.org/pypi/eolnorm/json` answered 404 on 2026-10-18 and again on 2026-10-19), so
-there is no release to upgrade from; every behaviour change is listed in the CHANGELOG
-against 0.2.0, the last state of `main` (ba7c9e9).
+The 1.0.0 certification bar (19 items) applied to eolnorm. Preparation resumed on
+2026-11-03 from 9bb1118, retaining all thirteen release commits. PyPI now has 0.2.0:
+`https://pypi.org/pypi/eolnorm/json` returned HTTP 200 on 2026-11-03, with that release
+uploaded on 2026-10-25. Its Python modules match `main` (ba7c9e9) byte for byte after
+normalizing source line endings. Every behaviour change from that release is listed in
+the CHANGELOG. The October evidence below is retained as historical evidence; the
+November preparation results are recorded separately at the end.
 
 Progress:
 - [x] Branch `release/1.0.0` created from `main` (ba7c9e9, 0.2.0)
@@ -32,17 +35,17 @@ Progress:
 | 5 | Typed, documented, bounded errors | PASS: `TypeError`, `ValueError`, `UnicodeDecodeError` and `OSError` subclasses, table in the GUIDE; messages quote at most 40 characters of a value (command line: 300) |
 | 6 | Contract tests of every public name | PASS |
 | 7 | Real ground truth | PASS: 8 sources fetched live with a hash manifest (re-fetched 2026-10-19, all hashes match), the installed git, the running interpreter, `eolify` 0.1.7 |
-| 8 | Real e2e from the wheel | PASS: wheel installed in a fresh venv, driven from an empty folder, CLI by subprocess; no PyPI release to upgrade from |
+| 8 | Real e2e from the wheel | PASS: wheel installed in a fresh venv, driven from an empty folder, CLI by subprocess; actual PyPI 0.2.0 upgraded in place on 2026-11-03 |
 | 9 | Seeded fuzz, no crash, hang or blowup | PASS: `tests/test_fuzz.py` |
-| 10 | Supported Pythons | PASS: CPython 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2, 3.14.2t; 3.13t not installed here |
+| 10 | Supported Pythons | PASS: CPython 3.14.6 is the only interpreter present on the preparation laptop; older matrix results retained below, missing versions listed in the November section |
 | 11 | README and `twine check` | PASS: `twine check --strict`, absolute links, badge, honest comparison |
-| 12 | Dated CHANGELOG section | PASS: 1.0.0, 2026-10-19 |
+| 12 | Dated CHANGELOG section | PASS: 1.0.0, 2026-11-03 |
 | 13 | pyproject 1.0.0, Production/Stable | PASS: version 1.0.0, classifiers 3.10 to 3.14, MIT, URLs, keywords, no runtime dependencies |
 | 14 | sdist and wheel contents | PASS: checked by `tests/test_e2e_wheel.py` and by hand |
 | 15 | Gates each exit 0 | PASS: see Gates |
 | 16 | Independent reviewer | pending (next stage) |
 | 17 | PR and trace guard | PR #3 from `release/1.0.0`, trace guard CLEAN; merge and publish left to the maintainer |
-| 18 | Contracts bite (mutations) | PASS: author 53 mutants, 52 killed at once, the survivor killed by a new contract |
+| 18 | Contracts bite (mutations) | PASS: original 53 mutants, final survivor closed; November round 12 mutations, all killed |
 | 19 | Five independent QA lenses | pending (next stage) |
 
 ## Baseline on 0.2.0 (before any change)
@@ -199,7 +202,7 @@ and M34 applied to 67fc3a7 now fails it.
 | M52 | `_cli_io.py` | stdout failure not reported in the exit | `tests/test_cli_streams.py::test_any_other_output_failure_is_reported_once_and_exits_two` |
 | M53 | `_cli_io.py` | a reader leaving counts as failure | `tests/test_cli_streams.py::test_a_reader_that_leaves_silences_output_but_not_the_work` |
 
-## Packaging, e2e and Pythons (items 8, 10, 13, 14)
+## October packaging, e2e and Pythons (items 8, 10, 13, 14)
 
 - `tests/test_e2e_wheel.py` (with `EOLNORM_E2E=1`) builds the wheel, installs it into a
   fresh venv, runs a consumer program from an empty folder with `-I` (every public name,
@@ -222,12 +225,92 @@ and M34 applied to 67fc3a7 now fails it.
   4 skipped; 3.14.2 free-threaded 302 passed, 5 skipped. Skips: the two build tests (run
   above), POSIX permission bits, named pipes (POSIX), the buffer protocol test (3.12+), and
   `eolify` on 3.14t. 3.13t is not installed here; 3.8 and 3.9 are below `requires-python`.
-- PyPI has no eolnorm release, so there is no upgrade path to test.
+- PyPI had no eolnorm release at the October check. The November upgrade check is below.
 
-## Gates (item 15)
+## October gates (item 15)
 
 Fresh clone of 6d444ee on another machine, CPython 3.14.2, fetched sources, git and `eolify`
 0.1.7 present, `EOLNORM_E2E=1`: `ruff format --check .` (42 files), `ruff check .` and
 `mypy --strict src tests` (35 files) exit 0; `pytest` 326 passed, 2 skipped (POSIX
 permission bits, named pipes), doctests included. The commit after it only fills in this
 paragraph.
+
+
+## Preparation verification, 2026-11-03
+
+The resumed branch had a clean working tree. No previous lens reports were present in
+local scratch, and the existing report records no passed QA lens or independent review.
+Those stages remain pending. The library implementation is unchanged from 9bb1118.
+
+### Ground truth and upgrade
+
+All eight URLs in `tests/upstream/MANIFEST.json` were fetched again in this session;
+every recorded size and SHA-256 matched. The manifest's fetch date is now 2026-11-03.
+`EOLNORM_UPSTREAM` lets the fetch script and tests use a separate local directory.
+The reference programs run here are CPython 3.14.6, git 2.54.0.windows.1 and eolify 0.1.7.
+The eolify comparison was also exercised directly: lone CR converts, NEL and U+2028 stay,
+the PNG header's CRLF converts, and the same-path overwrite leaves an empty file.
+
+The actual PyPI wheel `eolnorm-0.2.0-py3-none-any.whl` was downloaded and its digest checked
+against the live JSON response:
+`90febd496a17c34fc2eb04a3d840a1aee0bb6202ca324c1bae312465b64d4e32`.
+Every Python module in it matches the recorded 0.2.0 baseline. `tests/test_upgrade.py`
+installs that wheel in a fresh venv, runs a seeded consumer from outside the repository,
+upgrades the same environment to the built 1.0.0 wheel, and repeats the consumer:
+500 texts, all three boundary sets, three targets and both lone-CR settings (9,000
+combinations), bytes, detection, counts, streaming, UTF-16 file conversion and reporting.
+The result digests agree. The CLI report agrees, its version becomes 1.0.0, `pip check`
+passes, and 0.2.0 pickles of a report and a stream with a pending CR load and work in 1.0.0.
+The changed error and validation behaviours remain covered by the existing contracts and
+listed in CHANGELOG 1.0.0, now dated 2026-11-03.
+
+### Interpreter availability
+
+CPython 3.14.6 is the only executable present on this laptop. Every path returned by
+`py -0p` was checked: the entries for 3.10.19, 3.10.22, 3.11.5, 3.11.14, 3.11.17,
+3.12.12, 3.12.15, 3.13.2, 3.13.16, 3.14.2, 3.14.2t, 3.14.8 and 3.14.8t point to missing
+files. The standard installation and managed-interpreter directories contain no other
+interpreter. Python 3.10 through 3.13 and free-threaded Python therefore could not be
+rerun here; the October results above are historical, not fresh laptop results.
+
+### Mutation round
+
+Twelve deliberate mutations were applied one at a time in a disposable copy of the
+resumed tree. Each named contract module or test ran with a 300-second per-test limit.
+Every mutation produced pytest exit 1 with an assertion failure; none survived or failed
+merely to collect. Each original module was restored before the next mutation. The
+regular suite runs against the unchanged implementation separately.
+
+| Mutation | Module | Change | Caught by |
+| --- | --- | --- | --- |
+| R01 | `_binary.py` | binary threshold includes equality | `tests/test_binary.py::test_plain_text_is_not_binary` |
+| R02 | `_kinds.py` | CR target emits LF | `tests/test_eol.py::test_normalize_to_cr` |
+| R03 | `_kinds.py` | CRLF counted as a lone CR for bytes | `tests/test_eol.py::test_bytes_in_bytes_out` |
+| R04 | `_stream.py` | counts exposes mutable running state | `tests/test_stream.py::test_counts_property_is_a_copy` |
+| R05 | `_stream.py` | final chunk retains trailing CR | `tests/test_stream.py::test_any_chunking_gives_the_one_shot_result[False-lf-ascii]` |
+| R06 | `_content.py` | UTF-8 mark does not force decoding | `tests/test_files_rules.py::test_a_utf8_mark_always_decodes_the_file[options0]` |
+| R07 | `_content.py` | lossy codec rewrite bypasses round-trip guard | `tests/test_files_rules.py::test_normalize_file_refuses_a_codec_that_does_not_give_back_the_bytes[+AGEAYgBj-\r\n-utf-7]` |
+| R08 | `_files.py` | dry run writes the file | `tests/test_files.py::test_dry_run_reports_and_writes_nothing` |
+| R09 | `_files.py` | report hides byte order mark | `tests/test_files.py::test_a_byte_order_mark_picks_the_codec_and_is_kept[\xff\xfe-utf-16-le]` |
+| R10 | `_checks.py` | wrong error family for flag | `tests/test_errors.py::test_options_of_the_wrong_type_are_type_errors` |
+| R11 | `_eol.py` | mixed endings reported absent | `tests/test_eol.py::test_detect_mixed` |
+| R12 | `_cli_io.py` | usage error bound widened by one | `tests/test_cli_streams.py::test_usage_errors_are_cut_short[--to]` |
+
+### Gates and packaging
+
+On CPython 3.14.6, each gate exited 0 independently: `ruff format --check .` (44 files),
+`ruff check .`, `mypy --strict src` (12 files), and `pytest` with all fetched sources,
+eolify, `EOLNORM_E2E=1` and `EOLNORM_PREVIOUS_WHEEL` set: **355 passed, 4 skipped**.
+`mypy --strict src tests` also passed (37 files). The four skips are POSIX permission
+bits, symlink creation unavailable to this Windows account, control characters forbidden
+in Windows filenames, and POSIX named pipes. Every test has a 300-second timeout.
+
+The final wheel and sdist both pass `twine check --strict`. Their contents were listed
+and inspected: the wheel has twelve modules, `py.typed`, four metadata files and LICENSE
+(18 members); the sdist has the package, tests, scripts, documentation, metadata and the
+upstream manifest, but no downloaded third-party source, bytecode, build cache or
+certification report. The README badge is identical to the reference badge and links to
+the certified page. The wheel consumer and CLI subprocess tests pass in fresh venvs.
+All disposable output, caches, builds, venvs and pytest temporary directories were kept
+in the preparation scratch directory. Pipe tests redirect to an ordinary temporary file;
+git tests use an empty ordinary configuration file.
