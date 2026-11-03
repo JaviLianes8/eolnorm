@@ -67,6 +67,14 @@ def test_options_reach_the_library(tmp_path: Path) -> None:
     assert Path(path).read_bytes() == "a\rb\nc\n".encode("utf-16-le")
 
 
+def test_the_report_honours_breaks_and_encoding(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = _file(tmp_path, "a.txt", "a\r\nb\x85".encode("utf-16-le"))  # binary undecoded
+    assert main(["--breaks", "unicode", "--encoding", "utf-16-le", path]) == 0
+    assert capsys.readouterr().out == f"{path}: mixed (crlf=1, nel=1)\n"
+
+
 def test_a_bad_file_exits_two_but_the_rest_still_run(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -83,7 +91,9 @@ def test_decode_and_encoding_errors_exit_two(
 ) -> None:
     path = _file(tmp_path, "a.txt", b"\x80\r\n")
     assert main(["--to", "lf", "--encoding", "utf-8", path]) == 2
-    assert main(["--encoding", "nope", path]) == 2
+    with pytest.raises(SystemExit) as raised:
+        main(["--encoding", "nope", path])
+    assert raised.value.code == 2
     assert capsys.readouterr().err.count("eolnorm: ") == 2
 
 
@@ -104,6 +114,15 @@ def test_dash_with_an_encoding_decodes(monkeypatch: pytest.MonkeyPatch) -> None:
     out = _pipe(monkeypatch, "a\u2028b".encode("utf-16-le"))
     assert main(["--to", "lf", "--breaks", "unicode", "--encoding", "utf-16-le", "-"]) == 0
     assert out.getvalue() == "a\nb".encode("utf-16-le")
+
+
+def test_dash_honours_keep_lone_cr_and_breaks(monkeypatch: pytest.MonkeyPatch) -> None:
+    out = _pipe(monkeypatch, b"a\rb\r\n")
+    assert main(["--to", "lf", "--keep-lone-cr", "-"]) == 0
+    assert out.getvalue() == b"a\rb\n"
+    out = _pipe(monkeypatch, "a\x85b\rc".encode())
+    assert main(["--to", "crlf", "--breaks", "unicode", "--keep-lone-cr", "-"]) == 0
+    assert out.getvalue() == b"a\r\nb\rc"
 
 
 def test_dash_with_bad_input_exits_two(monkeypatch: pytest.MonkeyPatch) -> None:

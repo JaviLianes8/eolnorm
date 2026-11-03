@@ -26,7 +26,9 @@ def _samples(pieces: list[bytes], count: int, seed: int) -> list[bytes]:
 
 def _git(repo: Path, *args: str, stdin: bytes | None = None) -> bytes:
     assert GIT is not None
-    env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+    config = repo / "empty-global-config"
+    config.touch()
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": str(config), "GIT_CONFIG_NOSYSTEM": "1"}
     result = subprocess.run(
         [GIT, "-C", str(repo), *args], input=stdin, capture_output=True, check=True, env=env
     )

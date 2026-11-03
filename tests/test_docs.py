@@ -1,4 +1,4 @@
-"""The README examples run and print what they say; metadata agrees with the code."""
+"""The README and GUIDE examples run and print what they say; metadata agrees with the code."""
 
 from __future__ import annotations
 
@@ -16,20 +16,27 @@ def _readme() -> str:
     return (ROOT / "README.md").read_text(encoding="utf-8")
 
 
-def _blocks() -> list[str]:
-    return re.findall(r"```python\n(.*?)```", _readme(), flags=re.DOTALL)
+def _blocks(name: str = "README.md") -> list[str]:
+    text = (ROOT / name).read_text(encoding="utf-8")
+    return re.findall(r"```python\n(.*?)```", text, flags=re.DOTALL)
 
 
-def test_the_readme_has_its_five_examples() -> None:
-    assert len(_blocks()) == 5
+EXAMPLES = [("README.md", 5), ("GUIDE.md", 4)]
 
 
-@pytest.mark.parametrize("index", range(5))
+@pytest.mark.parametrize(("name", "count"), EXAMPLES)
+def test_each_document_has_its_examples(name: str, count: int) -> None:
+    assert len(_blocks(name)) == count
+
+
+@pytest.mark.parametrize(
+    ("name", "index"), [(name, index) for name, count in EXAMPLES for index in range(count)]
+)
 def test_each_example_prints_what_its_comments_say(
-    index: int, capsys: pytest.CaptureFixture[str]
+    name: str, index: int, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    block = _blocks()[index]
-    exec(compile(block, "README.md", "exec"), {"__name__": "readme"})
+    block = _blocks(name)[index]
+    exec(compile(block, name, "exec"), {"__name__": "example"})
     comments = re.findall(r"^# (.+)$", block, flags=re.MULTILINE)
     printed = capsys.readouterr().out.splitlines()
     assert printed == comments
@@ -53,9 +60,11 @@ def test_the_command_line_example_matches_the_tool(
     assert "\n".join(transcript) + "\n" in _readme()
 
 
-def test_every_public_name_appears_in_the_readme() -> None:
+@pytest.mark.parametrize("document", ["README.md", "GUIDE.md"])
+def test_every_public_name_appears_in_each_document(document: str) -> None:
+    text = (ROOT / document).read_text(encoding="utf-8")
     for name in eolnorm.__all__:
-        assert f"`{name}" in _readme(), name
+        assert f"`{name}" in text, name
 
 
 def test_version_matches_pyproject() -> None:

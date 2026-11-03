@@ -4,16 +4,17 @@ build-backend = "hatchling.build"
 
 [project]
 name = "eolnorm"
-version = "0.2.0"
+version = "1.0.0"
 description = "Detect, normalize and count line endings in text, bytes, streams and files: git-exact, Unicode-aware, atomic rewrites, zero dependencies"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Javier Lianes", email = "javier@lianes8studio.com" }]
-keywords = ["line-endings", "eol", "crlf", "newline", "normalize", "gitattributes", "unicode"]
+keywords = ["line-endings", "eol", "crlf", "newline", "normalize", "gitattributes", "unicode", "dos2unix", "universal-newlines"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
@@ -31,14 +32,14 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["ruff", "mypy", "pytest", "build", "twine"]
+dev = ["ruff", "mypy", "pytest", "pytest-timeout", "build", "twine"]
 
 [project.scripts]
 eolnorm = "eolnorm._cli:main"
 
 [project.urls]
 Homepage = "https://lianes8studio.com"
-Repository = "https://github.com/JaviLianes8/eolnorm"
+Source = "https://github.com/JaviLianes8/eolnorm"
 Issues = "https://github.com/JaviLianes8/eolnorm/issues"
 Changelog = "https://github.com/JaviLianes8/eolnorm/blob/main/CHANGELOG.md"
 LinkedIn = "https://www.linkedin.com/in/jlianes/"
@@ -48,7 +49,8 @@ Funding = "https://buymeacoffee.com/jlianesglrs"
 packages = ["src/eolnorm"]
 
 [tool.hatch.build.targets.sdist]
-exclude = ["IMPROVEMENTS-round.md", "tests/vectors/unicode/*.txt", "!tests/vectors/unicode/MANIFEST.txt"]
+# Third-party sources are fetched locally and never shipped; only their manifest is.
+exclude = ["IMPROVEMENTS-round*.md", "CERT-1.0-*.md", "tests/upstream/*", "!tests/upstream/MANIFEST.json"]
 
 [tool.ruff]
 line-length = 100
@@ -62,6 +64,7 @@ python_version = "3.10"
 strict = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["src", "tests"]
 pythonpath = ["src"]
-addopts = "-q"
+addopts = "-q --doctest-modules"
+timeout = 300

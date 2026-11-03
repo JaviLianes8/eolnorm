@@ -129,7 +129,7 @@ def test_other_types_are_rejected() -> None:
 def test_unknown_boundary_set_is_rejected() -> None:
     with pytest.raises(ValueError, match="boundary set"):
         detect("a", breaks="all")  # type: ignore[arg-type]
-    with pytest.raises(ValueError, match="boundary set"):
+    with pytest.raises(TypeError, match="boundary set must be a str"):
         normalize("a", breaks=None)  # type: ignore[arg-type]
 
 

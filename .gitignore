@@ -11,6 +11,6 @@ dist/
 .coverage
 htmlcov/
 
-# Third-party data, fetched by scripts/fetch_vectors.py (see its MANIFEST.txt)
-tests/vectors/unicode/*
-!tests/vectors/unicode/MANIFEST.txt
+# Third-party sources, fetched by scripts/fetch_upstream.py (see tests/upstream/MANIFEST.json)
+tests/upstream/*
+!tests/upstream/MANIFEST.json
