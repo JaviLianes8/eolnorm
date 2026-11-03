@@ -34,7 +34,7 @@ Progress:
 | 4 | Typed end to end | PASS: `mypy --strict src tests`, `py.typed` shipped, consumer typing checked by `tests/test_typing.py` |
 | 5 | Typed, documented, bounded errors | PASS: `TypeError`, `ValueError`, `UnicodeDecodeError` and `OSError` subclasses, table in the GUIDE; messages quote at most 40 characters of a value (command line: 300) |
 | 6 | Contract tests of every public name | PASS |
-| 7 | Real ground truth | PASS: 8 sources fetched live with a hash manifest (re-fetched 2026-10-19, all hashes match), the installed git, the running interpreter, `eolify` 0.1.7 |
+| 7 | Real ground truth | PASS: 8 sources fetched live with a hash manifest (re-fetched 2026-11-03, all hashes match), the installed git, the running interpreter, `eolify` 0.1.7 |
 | 8 | Real e2e from the wheel | PASS: wheel installed in a fresh venv, driven from an empty folder, CLI by subprocess; actual PyPI 0.2.0 upgraded in place on 2026-11-03 |
 | 9 | Seeded fuzz, no crash, hang or blowup | PASS: `tests/test_fuzz.py` |
 | 10 | Supported Pythons | PASS: CPython 3.14.6 is the only interpreter present on the preparation laptop; older matrix results retained below, missing versions listed in the November section |
@@ -277,7 +277,7 @@ rerun here; the October results above are historical, not fresh laptop results.
 
 Twelve deliberate mutations were applied one at a time in a disposable copy of the
 resumed tree. Each named contract module or test ran with a 300-second per-test limit.
-Every mutation produced pytest exit 1 with an assertion failure; none survived or failed
+Every mutation produced pytest exit 1 with a test failure; none survived or failed
 merely to collect. Each original module was restored before the next mutation. The
 regular suite runs against the unchanged implementation separately.
 
@@ -314,3 +314,11 @@ the certified page. The wheel consumer and CLI subprocess tests pass in fresh ve
 All disposable output, caches, builds, venvs and pytest temporary directories were kept
 in the preparation scratch directory. Pipe tests redirect to an ordinary temporary file;
 git tests use an empty ordinary configuration file.
+
+The final sdist was then unpacked into a separate directory and its `src` moved out of
+the import path. A fresh venv installed the final wheel, pytest 9.2.0, pytest-timeout
+2.4.0, mypy 2.4.1 and eolify 0.1.7. Its complete extracted test suite plus doctests of
+the installed package passed: **352 passed, 7 skipped** in 49.92 seconds. The four
+platform skips above remain; the two build tests and upgrade test are disabled in this
+installed-only run and passed separately in the source-tree run. The consumer's import
+path was checked to be inside that venv's `site-packages`.
